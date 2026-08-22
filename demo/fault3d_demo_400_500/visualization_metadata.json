@@ -1,0 +1,144 @@
+{
+  "artifact_type": "3D fault-surface visualization and normalized export",
+  "coordinate_mapping": {
+    "crossline_stride": 2,
+    "display_axis_order": [
+      "inline_header",
+      "crossline_header",
+      "sample_coordinate"
+    ],
+    "fractional_index_mapping": "linear interpolation on each SEG-Y axis",
+    "inline_origin": 400,
+    "legacy_grid_x": "offset",
+    "no_data_policy": "preserve NaN grid_z nodes, export vertex_valid, and omit triangles touching invalid nodes",
+    "normalized_processed_axis_order": [
+      "inline_index",
+      "processed_profile_index",
+      "processed_sample_index"
+    ],
+    "sample_stride": 2,
+    "vertical_unit": "m",
+    "z_field": "grid_z"
+  },
+  "counts": {
+    "inline_intersection_points": 9104,
+    "no_data_vertices": 61132,
+    "surfaces": 18,
+    "triangles": 665299,
+    "valid_vertices": 339799,
+    "vertices": 400931
+  },
+  "input": {
+    "canonical_metadata_verified": false,
+    "detected_format": "legacy-grid-pickle",
+    "fault_surfaces": {
+      "file": "outputs_400_500.pkl",
+      "sha256": "bbac865f3eb57a1c27055bcdf2d2d52fd36f57fb89abe6a109cc2fed006fd1ca",
+      "size_bytes": 9625283
+    },
+    "legacy_pickle_acknowledged": true,
+    "reconstruction_run_metadata": null,
+    "segy": {
+      "file": "400_500.segy",
+      "sha256": "ca209ae7aec887a019b8aafc7f0f9ba240966e36f7e82b0876fb88c81e7e68cb",
+      "size_bytes": 3463802640
+    }
+  },
+  "outputs": {
+    "fault_surfaces_map_view.png": {
+      "file": "fault_surfaces_map_view.png",
+      "sha256": "d4481ffde18a25ae999a595c505bc0138c1af02207467e3ab3dfc525dd77ea91",
+      "size_bytes": 173862
+    },
+    "fault_surfaces_oblique.png": {
+      "file": "fault_surfaces_oblique.png",
+      "sha256": "f1f68af7d6651502c268c25e3082d5a3f04e3bb4938c36fd3bb93662c7dc396f",
+      "size_bytes": 939481
+    },
+    "inline_0400_overlay.png": {
+      "file": "inline_0400_overlay.png",
+      "sha256": "7db9c82f0a50db55a55cbd971417e325f11c8cbe7418c364eb7de83d181f52f3",
+      "size_bytes": 1917390
+    },
+    "inline_0450_overlay.png": {
+      "file": "inline_0450_overlay.png",
+      "sha256": "5ef07f73d2df246f26e80fff805a83b888c2cec775f757c3a1e70d07bfc632cb",
+      "size_bytes": 1927296
+    },
+    "inline_0500_overlay.png": {
+      "file": "inline_0500_overlay.png",
+      "sha256": "92afb936b2838576fd7fd63ce525266b11b5c2de7b466065c6736c98ce785390",
+      "size_bytes": 1854591
+    },
+    "inline_intersections.csv": {
+      "file": "inline_intersections.csv",
+      "sha256": "4e617f8fa627e047455a9d325972f6a209a18b252619d3f910bc9b688a1fff0d",
+      "size_bytes": 469399
+    },
+    "surface_inventory.csv": {
+      "file": "surface_inventory.csv",
+      "sha256": "e4fc685c0e5f7e650c368a4fc908d1310fd84937a0f172de2d753a4f6e45fe54",
+      "size_bytes": 3163
+    },
+    "surfaces_normalized.npz": {
+      "file": "surfaces_normalized.npz",
+      "sha256": "c278de54b97fa35151b9780abbefc0370c3e2f33d5ae768e0b556374131d199f",
+      "size_bytes": 7037749
+    }
+  },
+  "schema_version": "fault-surface-visualization/1.1",
+  "segy_geometry": {
+    "crossline": {
+      "count": 4160,
+      "maximum": 4759,
+      "minimum": 600,
+      "regular_step": 1.0
+    },
+    "format_code": 5,
+    "inline": {
+      "count": 101,
+      "maximum": 500,
+      "minimum": 400,
+      "regular_step": 1.0
+    },
+    "sample_coordinate": {
+      "count": 2001,
+      "maximum": 8000.0,
+      "minimum": 0.0,
+      "regular_step": 4.0
+    },
+    "sorting": 2,
+    "trace_count": 420160
+  },
+  "software": {
+    "matplotlib": "3.8.0",
+    "numpy": "1.26.0",
+    "python": "3.11.5",
+    "segyio": "unknown"
+  },
+  "visualization": {
+    "amplitude_clip_percentile": 99.0,
+    "dpi": 200,
+    "effective_structured_plot_stride": 3,
+    "inline_slices": [
+      400,
+      450,
+      500
+    ],
+    "max_plot_vertices": 100000,
+    "oblique_box_aspect": [
+      1.2,
+      2.5,
+      2.0
+    ],
+    "oblique_box_aspect_is_metric": false,
+    "seismic_sample_display_stride": 2,
+    "seismic_xline_display_stride": 2
+  },
+  "warnings": [
+    "The legacy pickle has no sidecar metadata. Its grid-to-SEG-Y mapping is an explicit command-line assertion recorded in this file.",
+    "This artifact contains already gridded surfaces and was not rerun through the current 3D linking/reconstruction module.",
+    "At least one legacy surface does not contain grid_z_org; its original_sample arrays are exported as NaN.",
+    "The input contains 61132 NaN no-data surface nodes. They were preserved as holes and triangles touching them were omitted."
+  ]
+}
