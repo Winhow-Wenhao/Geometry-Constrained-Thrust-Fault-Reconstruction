@@ -46,7 +46,7 @@ import numpy as np
 import segyio
 import torch
 
-from fault_process_2d_end_to_end import (
+from fault_postprocessing_2d import (
     InferenceConfig,
     PostprocessConfig,
     SegyInlineReader,
