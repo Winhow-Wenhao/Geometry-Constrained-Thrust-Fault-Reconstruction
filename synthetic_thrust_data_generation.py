@@ -38,18 +38,29 @@ Workflow
 Default output follows the manuscript-scale setting:
     12,000 training samples + 2,000 validation samples.
 
+Array convention
+----------------
+The physical simulator uses ``(z, x)`` arrays internally because vertical
+convolution and coordinate mapping are naturally expressed in that order.  The
+public return value of ``generate_one_sample`` and every saved seismic/label
+array use the repository-wide ``(x, z)`` convention.  ``height`` therefore
+means the number of z samples and ``width`` means the number of x samples; a
+saved array has shape ``(width, height)``.
+
+Run the commands below from the repository root.
+
 Quick demo
 ----------
-python generate_synthetic_thrust_data_with_planar_gaussian.py \
-    --out ./synthetic_demo_with_background \
+python synthetic_thrust_data_generation.py \
+    --out outputs/datasets/synthetic_demo \
     --num-train 8 \
     --num-val 2 \
     --preview 4
 
 Full generation
 ---------------
-python generate_synthetic_thrust_data_with_planar_gaussian.py \
-    --out ./synthetic_thrust_data_with_background \
+python synthetic_thrust_data_generation.py \
+    --out outputs/datasets/synthetic \
     --num-train 12000 \
     --num-val 2000
 """
@@ -73,8 +84,15 @@ except ImportError:  # pragma: no cover
         return x
 
 
+DATASET_SCHEMA_VERSION = "synthetic-thrust-dataset/2.0"
+SAMPLE_SCHEMA_VERSION = "synthetic-thrust-sample/2.0"
+OUTPUT_AXIS_ORDER = ("x", "z")
+
+
 @dataclass
 class SyntheticConfig:
+    # Internal simulator shape is (height=z, width=x). Saved arrays are
+    # transposed to the public (x, z) convention.
     height: int = 256
     width: int = 256
 
@@ -457,8 +475,10 @@ def apply_thrust_faults(
         params_all.append(full_params)
 
     if rng.random() < cfg.probability_horizontal_flip:
-        deformed = np.fliplr(deformed)
-        labels = np.fliplr(labels)
+        # Internal arrays are (z, x), so physical x is axis 1 here. The public
+        # output is transposed to (x, z) later in generate_one_sample().
+        deformed = np.flip(deformed, axis=1).copy()
+        labels = np.flip(labels, axis=1).copy()
         for p in params_all:
             p["horizontally_flipped"] = True
     else:
@@ -577,18 +597,39 @@ def generate_one_sample(
         -> seismic convolution
         -> Gaussian noise
     """
-    flat = make_flat_reflectivity(cfg, rng)
-    background, background_params = apply_background_deformation(cfg, flat, rng)
-    deformed, label, fault_params = apply_thrust_faults(cfg, background, rng)
-    seismic, sim_params = simulate_seismic(cfg, deformed, rng)
+    flat_zx = make_flat_reflectivity(cfg, rng)
+    background_zx, background_params = apply_background_deformation(cfg, flat_zx, rng)
+    deformed_zx, label_zx, fault_params = apply_thrust_faults(cfg, background_zx, rng)
+    seismic_zx, sim_params = simulate_seismic(cfg, deformed_zx, rng)
+
+    expected_internal_shape = (cfg.height, cfg.width)
+    if seismic_zx.shape != expected_internal_shape:
+        raise RuntimeError(
+            "Internal seismic shape mismatch: "
+            f"received {seismic_zx.shape}, expected {expected_internal_shape} in (z, x) order."
+        )
+    if label_zx.shape != expected_internal_shape:
+        raise RuntimeError(
+            "Internal label shape mismatch: "
+            f"received {label_zx.shape}, expected {expected_internal_shape} in (z, x) order."
+        )
+
+    # This is the single public axis-conversion boundary. Keep all physical
+    # modeling above in (z, x), but return and save contiguous (x, z) arrays so
+    # synthetic and real training patches share the same convention.
+    seismic_xz = np.ascontiguousarray(seismic_zx.T, dtype=np.float32)
+    label_xz = np.ascontiguousarray(label_zx.T, dtype=np.uint8)
 
     metadata = {
+        "schema_version": SAMPLE_SCHEMA_VERSION,
+        "array_axis_order": list(OUTPUT_AXIS_ORDER),
+        "axis_sizes": {"x": cfg.width, "z": cfg.height},
         "background_deformation": background_params,
         "faults": fault_params,
         "seismic_simulation": sim_params,
-        "image_shape": [cfg.height, cfg.width],
+        "image_shape": [cfg.width, cfg.height],
     }
-    return seismic.astype(np.float32), label.astype(np.uint8), metadata
+    return seismic_xz, label_xz, metadata
 
 
 def save_preview_png(
@@ -596,16 +637,22 @@ def save_preview_png(
     seismic: np.ndarray,
     label: np.ndarray,
 ) -> None:
-    """Save a quick visual preview with label overlay."""
+    """Save a quick preview for seismic and label arrays in (x, z) order."""
     import matplotlib.pyplot as plt
 
+    if seismic.shape != label.shape:
+        raise ValueError(
+            f"Preview seismic/label shape mismatch: {seismic.shape} vs {label.shape}."
+        )
+    nx, nz = seismic.shape
+
     plt.figure(figsize=(5, 5))
-    plt.imshow(seismic, cmap="gray", aspect="auto", extent=[0, seismic.shape[1], seismic.shape[0], 0])
-    ys, xs = np.where(label > 0)
+    plt.imshow(seismic.T, cmap="gray", aspect="auto", extent=[0, nx, nz, 0])
+    xs, zs = np.where(label > 0)
     if len(xs) > 0:
-        plt.scatter(xs, ys, s=1)
-    plt.xlim(0, seismic.shape[1])
-    plt.ylim(seismic.shape[0], 0)
+        plt.scatter(xs, zs, s=1)
+    plt.xlim(0, nx)
+    plt.ylim(nz, 0)
     plt.axis("off")
     plt.tight_layout(pad=0)
     plt.savefig(out_png, dpi=150)
@@ -635,6 +682,16 @@ def write_split(
     for i in tqdm(range(n), desc=f"Generating {split}"):
         seismic, label, metadata = generate_one_sample(cfg, rng)
 
+        expected_output_shape = (cfg.width, cfg.height)
+        if seismic.shape != expected_output_shape or label.shape != expected_output_shape:
+            raise RuntimeError(
+                "Synthetic output contract violation: seismic and label must both "
+                f"have shape {expected_output_shape} in (x, z) order; received "
+                f"{seismic.shape} and {label.shape}."
+            )
+        if metadata.get("array_axis_order") != list(OUTPUT_AXIS_ORDER):
+            raise RuntimeError("Synthetic metadata does not declare (x, z) axis order.")
+
         stem = f"{split}_{i:06d}"
         np.save(image_dir / f"{stem}.npy", seismic.astype(np.float32))
         np.save(label_dir / f"{stem}.npy", label.astype(np.uint8))
@@ -646,16 +703,96 @@ def write_split(
             save_preview_png(preview_dir / f"{stem}.png", seismic, label)
 
 
+def assert_empty_output_directory(out_dir: Path) -> None:
+    """Refuse to mix newly generated (x, z) samples with an older dataset."""
+    if not out_dir.exists():
+        return
+    if not out_dir.is_dir():
+        raise NotADirectoryError(f"Output path is not a directory: {out_dir}")
+
+    existing_entries = sorted(
+        (
+            path
+            for path in out_dir.iterdir()
+            if not (
+                path.name == ".gitignore"
+                and path.is_file()
+                and not path.is_symlink()
+            )
+        ),
+        key=lambda path: path.name,
+    )
+    if existing_entries:
+        preview = ", ".join(path.name for path in existing_entries[:5])
+        suffix = " ..." if len(existing_entries) > 5 else ""
+        raise FileExistsError(
+            f"Output directory {out_dir} is not empty ({preview}{suffix}). "
+            "Generate the (x, z) dataset in a new or empty directory so legacy "
+            "(z, x) samples cannot be mixed with current samples. Only a regular "
+            "repository .gitignore file is allowed."
+        )
+
+
+def run_self_test() -> None:
+    """Verify the public (x, z) contract with a deliberately non-square sample."""
+    cfg = SyntheticConfig(
+        height=96,
+        width=128,
+        num_train=1,
+        num_val=0,
+        min_faults=1,
+        max_faults=1,
+        seed=2026,
+    )
+    seismic, label, metadata = generate_one_sample(cfg, np.random.default_rng(cfg.seed))
+    expected_shape = (cfg.width, cfg.height)
+
+    if seismic.shape != expected_shape or label.shape != expected_shape:
+        raise AssertionError(
+            f"Expected non-square (x, z) shape {expected_shape}, received "
+            f"{seismic.shape} and {label.shape}."
+        )
+    if not seismic.flags.c_contiguous or not label.flags.c_contiguous:
+        raise AssertionError("Public seismic and label arrays must be C-contiguous.")
+    if seismic.dtype != np.float32 or label.dtype != np.uint8:
+        raise AssertionError(f"Unexpected dtypes: {seismic.dtype}, {label.dtype}.")
+    if not np.isfinite(seismic).all() or not np.isfinite(label).all():
+        raise AssertionError("Synthetic self-test produced non-finite values.")
+    if not np.any(label):
+        raise AssertionError("Synthetic self-test produced an empty fault label.")
+    if metadata.get("array_axis_order") != list(OUTPUT_AXIS_ORDER):
+        raise AssertionError("Synthetic metadata axis order is not (x, z).")
+    if metadata.get("image_shape") != list(expected_shape):
+        raise AssertionError("Synthetic metadata image shape does not match the arrays.")
+
+    print(f"Synthetic axis self-test passed: shape={expected_shape}, order=(x, z)")
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Generate synthetic thrust-fault seismic data with planar/Gaussian background deformation."
     )
 
-    parser.add_argument("--out", type=str, default="./synthetic_thrust_data_with_background")
+    parser.add_argument(
+        "--out",
+        type=str,
+        default="outputs/datasets/synthetic",
+        help="Output dataset directory (default: outputs/datasets/synthetic).",
+    )
     parser.add_argument("--num-train", type=int, default=12000)
     parser.add_argument("--num-val", type=int, default=2000)
-    parser.add_argument("--height", type=int, default=256)
-    parser.add_argument("--width", type=int, default=256)
+    parser.add_argument(
+        "--height",
+        type=int,
+        default=256,
+        help="Number of z samples; saved arrays use this as axis 1 (default: 256).",
+    )
+    parser.add_argument(
+        "--width",
+        type=int,
+        default=256,
+        help="Number of x samples; saved arrays use this as axis 0 (default: 256).",
+    )
     parser.add_argument("--min-faults", type=int, default=1)
     parser.add_argument("--max-faults", type=int, default=3)
     parser.add_argument("--seed", type=int, default=2026)
@@ -671,12 +808,21 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Disable Gaussian background deformation.",
     )
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="Generate one non-square in-memory sample and verify the (x, z) contract.",
+    )
 
     return parser
 
 
 def main() -> None:
     args = build_arg_parser().parse_args()
+
+    if args.self_test:
+        run_self_test()
+        return
 
     cfg = SyntheticConfig(
         height=args.height,
@@ -691,10 +837,20 @@ def main() -> None:
     )
 
     out_dir = Path(args.out)
+    assert_empty_output_directory(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    dataset_config = asdict(cfg)
+    dataset_config.update(
+        {
+            "schema_version": DATASET_SCHEMA_VERSION,
+            "array_axis_order": list(OUTPUT_AXIS_ORDER),
+            "array_shape": [cfg.width, cfg.height],
+            "axis_sizes": {"x": cfg.width, "z": cfg.height},
+        }
+    )
     with open(out_dir / "config.json", "w", encoding="utf-8") as f:
-        json.dump(asdict(cfg), f, indent=2)
+        json.dump(dataset_config, f, indent=2)
 
     rng = np.random.default_rng(cfg.seed)
     write_split(cfg, out_dir, "train", cfg.num_train, rng, preview=args.preview)

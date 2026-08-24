@@ -18,11 +18,11 @@ pickle root would violate the strict ``line_<integer>`` data contract.
 
 Example, from the project root::
 
-    python github/Best/fault_process_multi_inline.py \
-        segy/test_300_400.segy \
-        --model-weights github/Best/model_real.pth \
+    python multi_inline_processing.py \
+        data/segy/test_300_400.segy \
+        --model-weights model_real.pth \
         --inline-start 300 --inline-end 330 \
-        --output-pickle github/Best/fault_lines_2d_300_330.pkl
+        --output-pickle outputs/fault2d/fault_lines_2d_300_330.pkl
 
 The pickle is a trusted local interchange artifact.  Loading pickle files from
 an untrusted source can execute arbitrary code.
@@ -46,7 +46,7 @@ import numpy as np
 import segyio
 import torch
 
-from 2D_fault_post_processing import (
+from fault_post_processing_2d import (
     InferenceConfig,
     PostprocessConfig,
     SegyInlineReader,
@@ -771,12 +771,24 @@ def build_argument_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("input_segy", help="Regular-grid SEG-Y volume.")
+    parser.add_argument(
+        "input_segy",
+        help="Regular-grid SEG-Y volume, normally under data/segy/.",
+    )
     parser.add_argument(
         "--model-weights",
         default=str(script_dir / "model_real.pth"),
+        help=(
+            "Path to a user-supplied compatible UASS-Net model state dictionary. "
+            "The default uses the historical reference filename at the repository "
+            "root, but that file is not distributed."
+        ),
     )
-    parser.add_argument("--output-pickle", default="fault_lines_2d_300_330.pkl")
+    parser.add_argument(
+        "--output-pickle",
+        default="outputs/fault2d/fault_lines_2d_300_330.pkl",
+        help="Trusted 2D interface pickle.",
+    )
     parser.add_argument(
         "--metadata-json",
         help="Sidecar path; defaults to OUTPUT_PICKLE with .metadata.json suffix.",

@@ -4,6 +4,22 @@ Train UASS-Net for 2D thrust-fault probability prediction.
 
 The script implements the model-training part of the manuscript:
 synthetic pretraining followed by optional transfer learning on sparse real labels.
+
+Run commands from the repository root. Synthetic pretraining uses the generated
+synthetic dataset by default:
+
+    python uassnet_training.py --mode synthetic
+
+For transfer learning, select the generated real-label dataset explicitly:
+
+    python uassnet_training.py \
+        --mode transfer \
+        --data-root outputs/datasets/real_labels \
+        --pretrained outputs/training/uassnet_synthetic_best.pth
+
+All seismic patches, labels, prediction arrays, and network spatial dimensions
+use ``(x, z)`` order.  The training tensor layout is therefore
+``(batch, channel, x, z)``.
 """
 
 from __future__ import annotations
@@ -25,11 +41,15 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 
 
+CANONICAL_ARRAY_AXIS_ORDER = ("x", "z")
+
+
 @dataclass
 class TrainConfig:
     data_root: str
-    out_dir: str = "./uassnet_outputs"
+    out_dir: str = "outputs/training"
     file_ext: str = ".npy"
+    array_axis_order: Tuple[str, str] = CANONICAL_ARRAY_AXIS_ORDER
 
     patch_size: int = 256
     batch_size: int = 16
@@ -59,7 +79,82 @@ def set_seed(seed: int) -> None:
     torch.cuda.manual_seed_all(seed)
 
 
+def minmax_then_zscore(image: np.ndarray) -> np.ndarray:
+    """Min-max normalize a seismic patch, then standardize it by z-score."""
+
+    image = np.asarray(image, dtype=np.float32)
+    image_min = float(np.min(image))
+    image_max = float(np.max(image))
+    if not image_max > image_min:
+        raise ValueError("Cannot normalize a constant seismic patch.")
+
+    normalized = (image - image_min) / (image_max - image_min)
+    patch_mean = float(np.mean(normalized))
+    patch_std = float(np.std(normalized))
+    if not patch_std > 0.0:
+        raise ValueError("Cannot standardize a constant seismic patch.")
+
+    return ((normalized - patch_mean) / patch_std).astype(np.float32)
+
+
+def read_dat_patch(
+    path: str | Path,
+    *,
+    dtype: Any,
+    patch_size: int,
+) -> np.ndarray:
+    """Read a headerless C-order (x, z) square patch after byte validation."""
+
+    path = Path(path)
+    data_type = np.dtype(dtype)
+    expected_values = int(patch_size) ** 2
+    expected_bytes = expected_values * data_type.itemsize
+    actual_bytes = path.stat().st_size
+    if actual_bytes != expected_bytes:
+        raise ValueError(
+            f"{path} has {actual_bytes} bytes; expected {expected_bytes} bytes "
+            f"for a {patch_size}x{patch_size} {data_type.name} patch."
+        )
+    return np.fromfile(path, dtype=data_type).reshape(patch_size, patch_size)
+
+
+def validate_synthetic_dataset_axis_contract(root: str | Path) -> None:
+    """Reject legacy synthetic datasets that were stored in (z, x) order."""
+    root = Path(root)
+    config_path = root / "config.json"
+    if not config_path.is_file():
+        return
+
+    try:
+        with open(config_path, "r", encoding="utf-8") as file:
+            config = json.load(file)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Cannot read dataset configuration {config_path}: {exc}") from exc
+
+    synthetic_keys = {"height", "width", "num_train", "num_val"}
+    if not isinstance(config, dict) or not synthetic_keys.issubset(config):
+        return
+
+    axis_order = config.get("array_axis_order")
+    if axis_order != list(CANONICAL_ARRAY_AXIS_ORDER):
+        declared = "missing (legacy datasets used (z, x))" if axis_order is None else repr(axis_order)
+        raise ValueError(
+            f"Synthetic dataset {root} has array_axis_order={declared}; expected ['x', 'z']. "
+            "Regenerate it with the current synthetic_thrust_data_generation.py "
+            "in a new or empty directory before training."
+        )
+
+
+def flip_x(array: np.ndarray) -> np.ndarray:
+    """Reverse physical x (axis 0) for an array in canonical (x, z) order."""
+    if array.ndim != 2:
+        raise ValueError(f"Expected a 2D (x, z) array, received shape {array.shape}.")
+    return np.flip(array, axis=0).copy()
+
+
 class FaultPatchDataset(Dataset):
+    """Exact-stem paired seismic/label patches in canonical (x, z) order."""
+
     def __init__(
         self,
         root: str | Path,
@@ -74,6 +169,15 @@ class FaultPatchDataset(Dataset):
         self.patch_size = patch_size
         self.random_flip = random_flip
 
+        supported_extensions = {".npy", ".dat"}
+        if self.file_ext not in supported_extensions:
+            raise ValueError(
+                f"Unsupported dataset file_ext={self.file_ext!r}; expected one of "
+                f"{sorted(supported_extensions)}."
+            )
+
+        validate_synthetic_dataset_axis_contract(self.root)
+
         self.image_dir = self.root / split / "seismic"
         self.label_dir = self.root / split / "labels"
 
@@ -82,15 +186,42 @@ class FaultPatchDataset(Dataset):
         if not self.label_dir.exists():
             raise FileNotFoundError(f"Missing label directory: {self.label_dir}")
 
-        self.image_files = sorted(self.image_dir.glob(f"*{file_ext}"))
-        self.label_files = sorted(self.label_dir.glob(f"*{file_ext}"))
+        image_by_stem = {
+            path.stem: path
+            for path in self.image_dir.glob(f"*{file_ext}")
+            if path.is_file()
+        }
+        label_by_stem = {
+            path.stem: path
+            for path in self.label_dir.glob(f"*{file_ext}")
+            if path.is_file()
+        }
 
-        if len(self.image_files) == 0:
+        if not image_by_stem:
             raise RuntimeError(f"No image files found in {self.image_dir}")
-        if len(self.image_files) != len(self.label_files):
+
+        image_stems = set(image_by_stem)
+        label_stems = set(label_by_stem)
+        if image_stems != label_stems:
+            missing_labels = sorted(image_stems - label_stems)
+            missing_images = sorted(label_stems - image_stems)
+
+            def preview(stems: List[str]) -> str:
+                shown = ", ".join(stems[:5])
+                return shown + (", ..." if len(stems) > 5 else "")
+
+            details = []
+            if missing_labels:
+                details.append(f"missing labels for stems [{preview(missing_labels)}]")
+            if missing_images:
+                details.append(f"missing seismic for stems [{preview(missing_images)}]")
             raise RuntimeError(
-                f"Image/label count mismatch: {len(self.image_files)} vs {len(self.label_files)}"
+                f"Image/label stem mismatch in split {split!r}: " + "; ".join(details)
             )
+
+        paired_stems = sorted(image_stems)
+        self.image_files = [image_by_stem[stem] for stem in paired_stems]
+        self.label_files = [label_by_stem[stem] for stem in paired_stems]
 
     def __len__(self) -> int:
         return len(self.image_files)
@@ -99,8 +230,8 @@ class FaultPatchDataset(Dataset):
         if path.suffix == ".npy":
             arr = np.load(path)
         elif path.suffix == ".dat":
-            dtype = np.float64 if is_label else np.float32
-            arr = np.fromfile(path, dtype=dtype).reshape(self.patch_size, self.patch_size)
+            dtype = np.uint8 if is_label else np.float32
+            arr = read_dat_patch(path, dtype=dtype, patch_size=self.patch_size)
         else:
             raise ValueError(f"Unsupported file type: {path.suffix}")
 
@@ -112,9 +243,7 @@ class FaultPatchDataset(Dataset):
         if is_label:
             arr = (arr > 0.5).astype(np.float32)
         else:
-            mn, mx = float(arr.min()), float(arr.max())
-            if mx > mn:
-                arr = (arr - mn) / (mx - mn)
+            arr = minmax_then_zscore(arr)
 
         return arr
 
@@ -123,8 +252,8 @@ class FaultPatchDataset(Dataset):
         label = self._read_array(self.label_files[idx], is_label=True)
 
         if self.random_flip and np.random.rand() < 0.5:
-            image = np.fliplr(image).copy()
-            label = np.fliplr(label).copy()
+            image = flip_x(image)
+            label = flip_x(label)
 
         image = torch.from_numpy(image[None]).float()
         label = torch.from_numpy(label[None]).float()
@@ -480,6 +609,9 @@ def build_model(cfg: TrainConfig) -> UASSNet:
 
 
 def train(cfg: TrainConfig, checkpoint_name: str, pretrained: Optional[str] = None, freeze: bool = False) -> Path:
+    if freeze and not pretrained:
+        raise ValueError("freeze=True requires a pretrained checkpoint.")
+
     set_seed(cfg.seed)
     Path(cfg.out_dir).mkdir(parents=True, exist_ok=True)
 
@@ -575,14 +707,16 @@ def predict_one_patch(
     if patch_path.suffix == ".npy":
         image = np.load(patch_path)
     elif patch_path.suffix == ".dat":
-        image = np.fromfile(patch_path, dtype=np.float32).reshape(cfg.patch_size, cfg.patch_size)
+        image = read_dat_patch(
+            patch_path,
+            dtype=np.float32,
+            patch_size=cfg.patch_size,
+        )
     else:
         raise ValueError(f"Unsupported patch file: {patch_path}")
 
     image = np.squeeze(image).astype(np.float32)
-    mn, mx = float(image.min()), float(image.max())
-    if mx > mn:
-        image = (image - mn) / (mx - mn)
+    image = minmax_then_zscore(image)
 
     x = torch.from_numpy(image[None, None]).float().to(cfg.device)
     prob = torch.sigmoid(model(x))[0, 0].cpu().numpy().astype(np.float32)
@@ -599,9 +733,32 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("--mode", choices=["synthetic", "transfer", "predict", "sanity"], default="sanity")
 
-    parser.add_argument("--data-root", type=str, default="./synthetic_thrust_data_with_background")
-    parser.add_argument("--out-dir", type=str, default="./uassnet_outputs")
-    parser.add_argument("--file-ext", type=str, choices=[".npy", ".dat"], default=".npy")
+    parser.add_argument(
+        "--data-root",
+        type=str,
+        default="outputs/datasets/synthetic",
+        help=(
+            "Dataset root (default: outputs/datasets/synthetic). "
+            "Use outputs/datasets/real_labels for transfer learning."
+        ),
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=str,
+        default="outputs/training",
+        help="Checkpoint, history, configuration, and prediction output directory.",
+    )
+    parser.add_argument(
+        "--file-ext",
+        type=str,
+        choices=[".npy", ".dat"],
+        default=".npy",
+        help=(
+            "Patch format. Raw .dat datasets must contain headerless C-order "
+            "(x, z) square arrays: float32 seismic and uint8 labels; "
+            "--patch-size must match the writer."
+        ),
+    )
 
     parser.add_argument("--epochs", type=int, default=None)
     parser.add_argument("--batch-size", type=int, default=16)
@@ -614,9 +771,25 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dropout", type=float, default=0.2)
     parser.add_argument("--patch-size", type=int, default=256)
 
-    parser.add_argument("--pretrained", type=str, default=None)
-    parser.add_argument("--freeze-encoder", action="store_true")
-    parser.add_argument("--no-random-flip", action="store_true")
+    parser.add_argument(
+        "--pretrained",
+        type=str,
+        default=None,
+        help="Pretrained checkpoint; required when --mode transfer is selected.",
+    )
+    parser.add_argument(
+        "--freeze-encoder",
+        action="store_true",
+        help=(
+            "Freeze the pretrained encoder during transfer learning; valid only "
+            "with --mode transfer and --pretrained."
+        ),
+    )
+    parser.add_argument(
+        "--no-random-flip",
+        action="store_true",
+        help="Disable random reversal of physical x (axis 0 in (x, z) arrays).",
+    )
 
     parser.add_argument("--checkpoint", type=str, default=None)
     parser.add_argument("--patch", type=str, default=None)
@@ -662,7 +835,16 @@ def config_from_args(args: argparse.Namespace) -> TrainConfig:
 
 
 def main() -> None:
-    args = build_parser().parse_args()
+    parser = build_parser()
+    args = parser.parse_args()
+
+    if args.mode == "transfer" and not args.pretrained:
+        parser.error("--pretrained is required when --mode transfer.")
+    if args.freeze_encoder and args.mode != "transfer":
+        parser.error(
+            "--freeze-encoder is only valid with --mode transfer and --pretrained."
+        )
+
     cfg = config_from_args(args)
 
     if args.mode == "sanity":

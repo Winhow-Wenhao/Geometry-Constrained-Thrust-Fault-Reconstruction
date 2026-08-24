@@ -18,20 +18,21 @@ For a SEG-Y volume, only requested inline sections are read.  The complete
 volume is never materialized in memory.  Public outputs use PNG, CSV, JSON,
 and non-object NumPy NPZ files; the input pickle is not copied into the output.
 
-Example for the data distributed with this repository::
+Example from the repository root after placing the external SEG-Y input under
+``data/segy``::
 
-    python visualize_fault_surfaces_3d.py \
-        outputs_400_500.pkl \
+    python demo/visualize_fault_surfaces_3d.py \
+        demo/outputs_400_500.pkl \
         --input-format legacy-grid-pickle \
         --allow-legacy-pickle \
-        --segy 'demo data/400_500.segy' \
+        --segy data/segy/400_500.segy \
         --inline-origin 400 \
         --crossline-stride 2 \
         --sample-stride 2 \
         --z-field grid_z \
         --vertical-unit m \
         --inline-slices 400 450 500 \
-        --output-dir fault3d_demo_400_500
+        --output-dir outputs/visualization/fault3d_demo_400_500
 
 Important coordinate convention
 -------------------------------
@@ -1579,7 +1580,10 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default=None,
         help="SEG-Y inline headers for seismic overlays; defaults to first/middle/last.",
     )
-    parser.add_argument("--output-dir", default="fault3d_display")
+    parser.add_argument(
+        "--output-dir",
+        default="outputs/visualization/fault3d_display",
+    )
     parser.add_argument("--max-plot-vertices", type=int, default=100_000)
     parser.add_argument("--amplitude-clip-percentile", type=float, default=99.0)
     parser.add_argument("--seismic-xline-display-stride", type=int, default=2)
