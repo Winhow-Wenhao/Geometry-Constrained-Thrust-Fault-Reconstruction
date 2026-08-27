@@ -2,9 +2,9 @@
 """
 Real seismic thrust-fault label construction for transfer learning.
 
-This script corresponds to the notebook:
-
-    real_seismic_label_construction_paper_style.ipynb
+This standalone script consolidates the real-data label-construction workflow
+developed in internal research notebooks. Those development notebooks are not
+part of this source release; this file is the maintained public implementation.
 
 Purpose
 -------
@@ -101,6 +101,8 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 from scipy.ndimage import binary_dilation
+
+from file_utils import sha256_file
 
 try:
     import segyio
@@ -1038,15 +1040,6 @@ def save_preview_png(
     plt.tight_layout(pad=0)
     plt.savefig(path, dpi=150)
     plt.close()
-
-
-def sha256_file(path: str | Path) -> str:
-    """Return a streaming SHA-256 checksum for one file."""
-    digest = hashlib.sha256()
-    with Path(path).open("rb") as file:
-        for chunk in iter(lambda: file.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def cached_sha256_file(

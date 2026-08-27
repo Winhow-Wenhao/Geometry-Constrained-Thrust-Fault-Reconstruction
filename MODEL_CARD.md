@@ -2,7 +2,7 @@
 
 Model-card status: **Reference-only -- checkpoint identity verified; checkpoint
 not distributed; training and license metadata incomplete**  
-Last reviewed: 2026-08-24
+Last reviewed: 2026-08-26
 
 This card documents the external `model_real.pth` reference checkpoint. The
 checkpoint is not distributed with this source-code repository. Its
@@ -44,10 +44,9 @@ covered by the repository's MIT software license; see
 | Weight license | **Pending; no redistribution or reuse license asserted** |
 
 The recorded reference checkpoint strictly loaded with `base_channels=16` and
-`dropout=0.2` into the current definitions in
-[`uassnet_training.py`](uassnet_training.py) and
-[`fault_post_processing_2d.py`](fault_post_processing_2d.py). The source and
-executed notebooks use the same model configuration.
+`dropout=0.2` into the shared definition in
+[`uassnet_model.py`](uassnet_model.py). Training, inference, and both demo
+notebooks import that definition and use the same model configuration.
 
 ## Architecture
 
@@ -127,11 +126,13 @@ identify:
 - the training hardware, elapsed time, best epoch, and validation history.
 
 The source and license of the NZ3D seismic assets used by the reference workflow
-are recorded separately in [`ASSET_LICENSES.md`](ASSET_LICENSES.md). Wenhao
-Zheng has confirmed that he independently created the interpretation geometry
-and has not assigned or transferred those rights. The manual interpretation
-files and training patches nevertheless remain external and are not distributed
-in this release.
+are recorded separately in [`ASSET_LICENSES.md`](ASSET_LICENSES.md). The two
+reference SEG-Y subsets are publicly archived in the versioned
+[Zenodo data record](https://doi.org/10.5281/zenodo.22070539). Wenhao Zheng has
+confirmed that he independently created the interpretation geometry and has not
+assigned or transferred those rights. The manual interpretation files and
+training patches nevertheless remain external and are not distributed in this
+release.
 
 ## Reference training protocol
 
@@ -222,12 +223,14 @@ already-gridded surface pickle. It demonstrates visualization, not an
 end-to-end evaluation of the reference checkpoint through the current
 multi-inline and 3D reconstruction modules.
 
-The complete reference figures cannot be reproduced from this repository
-alone. Exact regeneration requires the external reference checkpoint, the
-applicable external SEG-Y input, and, for the 3D figures, the external raw or
-numeric surface artifacts. The included executed notebook and PNG files are
-display records of the reference outputs, not proof that those external inputs
-are available or licensed for redistribution.
+The complete reference figures cannot be reproduced from this repository alone.
+The applicable SEG-Y subsets are publicly available through
+[Zenodo v1.0.0](https://doi.org/10.5281/zenodo.22070539), but exact 2D
+regeneration also requires the undistributed reference checkpoint, and the 3D
+figures additionally require undistributed raw or numeric surface artifacts.
+The included executed notebook and PNG files are display records of the
+reference outputs; they do not make those remaining unpublished inputs available
+or establish permission to redistribute them.
 
 ## Known limitations and risks
 
@@ -316,6 +319,8 @@ training-data terms, and an explicit model-weight license are confirmed. See
 ## Citation
 
 Use the manuscript citation in the [README citation section](README.md#citation).
-When using the NZ3D seismic data or its visualized derivatives, also cite the
-source dataset and follow the terms recorded in
-[`ASSET_LICENSES.md`](ASSET_LICENSES.md).
+When using the reference SEG-Y subsets, also cite the versioned Zenodo dataset
+([doi:10.5281/zenodo.22070539](https://doi.org/10.5281/zenodo.22070539)) and the
+source NZ3D/MGDS dataset
+([doi:10.26022/IEDA/331022](https://doi.org/10.26022/IEDA/331022)), and follow
+the terms recorded in [`ASSET_LICENSES.md`](ASSET_LICENSES.md).

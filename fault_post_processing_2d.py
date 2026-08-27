@@ -26,18 +26,15 @@ from __future__ import annotations
 import argparse
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
-import hashlib
 import json
 from pathlib import Path
 import pickle
 from typing import Any, Mapping
-import warnings
 
 import numpy as np
 import segyio
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from scipy.interpolate import interp1d
 from scipy.ndimage import (
     binary_dilation,
@@ -47,6 +44,17 @@ from scipy.ndimage import (
 )
 from scipy.spatial import cKDTree
 from sklearn.cluster import DBSCAN
+
+from file_utils import sha256_file
+from uassnet_model import (
+    ASPP,
+    ConvBlock,
+    DecoderBlock,
+    SEBlock,
+    UASSNet,
+    extract_model_state_dict,
+    load_torch_checkpoint,
+)
 
 
 REFERENCE_MODEL_SHA256 = (
@@ -290,16 +298,6 @@ def resolve_device(device: str | torch.device = "auto") -> torch.device:
     return resolved
 
 
-def sha256_file(file_path: str | Path, block_size: int = 1024 * 1024) -> str:
-    """Return the SHA-256 digest of a file."""
-
-    digest = hashlib.sha256()
-    with Path(file_path).open("rb") as input_file:
-        while block := input_file.read(block_size):
-            digest.update(block)
-    return digest.hexdigest()
-
-
 class SegyInlineReader:
     """Stream individual inlines from a regular SEG-Y cube.
 
@@ -412,142 +410,6 @@ def minmax_normalize(image: np.ndarray) -> np.ndarray:
     return np.asarray((image - image_min) / (image_max - image_min), dtype=np.float32)
 
 
-class ConvBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int) -> None:
-        super().__init__()
-        self.layers = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 3, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, 3, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-        )
-
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        return self.layers(inputs)
-
-
-class SEBlock(nn.Module):
-    def __init__(self, channels: int, reduction: int = 8) -> None:
-        super().__init__()
-        hidden_channels = max(channels // reduction, 1)
-        self.layers = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(channels, hidden_channels, 1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(hidden_channels, channels, 1),
-            nn.Sigmoid(),
-        )
-
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        return inputs * self.layers(inputs)
-
-
-class ASPP(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int) -> None:
-        super().__init__()
-        self.b1 = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-        )
-        self.b2 = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 3, padding=6, dilation=6, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-        )
-        self.b3 = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 3, padding=12, dilation=12, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-        )
-        self.b4 = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 3, padding=18, dilation=18, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-        )
-        self.fuse = nn.Sequential(
-            nn.Conv2d(out_channels * 4, out_channels, 1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-        )
-
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        return self.fuse(torch.cat([self.b1(inputs), self.b2(inputs), self.b3(inputs), self.b4(inputs)], dim=1))
-
-
-class DecoderBlock(nn.Module):
-    def __init__(self, up_channels: int, skip_channels: int, out_channels: int, dropout: float) -> None:
-        super().__init__()
-        self.se = SEBlock(skip_channels)
-        self.dropout = nn.Dropout2d(dropout)
-        self.conv = ConvBlock(up_channels + skip_channels, out_channels)
-
-    def forward(self, inputs: torch.Tensor, skip: torch.Tensor) -> torch.Tensor:
-        # Nearest interpolation is part of the checkpoint's reference forward definition.
-        inputs = F.interpolate(inputs, size=skip.shape[-2:], mode="nearest")
-        inputs = torch.cat([self.se(skip), inputs], dim=1)
-        return self.conv(self.dropout(inputs))
-
-
-class UASSNet(nn.Module):
-    def __init__(
-        self,
-        in_channels: int = 1,
-        out_channels: int = 1,
-        base_channels: int = 16,
-        dropout: float = 0.2,
-    ) -> None:
-        super().__init__()
-        c1, c2, c3, c4, c5 = (
-            base_channels,
-            base_channels * 2,
-            base_channels * 4,
-            base_channels * 8,
-            base_channels * 32,
-        )
-        self.enc1 = ConvBlock(in_channels, c1)
-        self.enc2 = ConvBlock(c1, c2)
-        self.enc3 = ConvBlock(c2, c3)
-        self.enc4 = ConvBlock(c3, c4)
-        self.enc5 = ConvBlock(c4, c5)
-        self.pool = nn.MaxPool2d(2)
-        self.aspp = ASPP(c5, c4)
-        self.dec4 = DecoderBlock(c4, c4, c4, dropout)
-        self.dec3 = DecoderBlock(c4, c3, c3, dropout)
-        self.dec2 = DecoderBlock(c3, c2, c2, dropout)
-        self.dec1 = DecoderBlock(c2, c1, c1, dropout)
-        self.out_conv = nn.Conv2d(c1, out_channels, 3, padding=1)
-
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        encoder1 = self.enc1(inputs)
-        encoder2 = self.enc2(self.pool(encoder1))
-        encoder3 = self.enc3(self.pool(encoder2))
-        encoder4 = self.enc4(self.pool(encoder3))
-        encoder5 = self.enc5(self.pool(encoder4))
-        decoded = self.aspp(encoder5)
-        decoded = self.dec4(decoded, encoder4)
-        decoded = self.dec3(decoded, encoder3)
-        decoded = self.dec2(decoded, encoder2)
-        decoded = self.dec1(decoded, encoder1)
-        return self.out_conv(decoded)
-
-
-def _extract_state_dict(checkpoint: Any) -> Mapping[str, torch.Tensor]:
-    if isinstance(checkpoint, Mapping) and "model" in checkpoint:
-        checkpoint = checkpoint["model"]
-    elif isinstance(checkpoint, Mapping) and "model_state_dict" in checkpoint:
-        checkpoint = checkpoint["model_state_dict"]
-    if not isinstance(checkpoint, Mapping) or not checkpoint:
-        raise TypeError("Checkpoint must be a state_dict or contain model/model_state_dict.")
-    if not all(isinstance(key, str) and torch.is_tensor(value) for key, value in checkpoint.items()):
-        raise TypeError("The selected checkpoint object is not a PyTorch state_dict.")
-    if all(key.startswith("module.") for key in checkpoint):
-        checkpoint = {key[7:]: value for key, value in checkpoint.items()}
-    return checkpoint
-
-
 def load_uassnet_model(
     weights_path: str | Path,
     device: str | torch.device = "auto",
@@ -573,13 +435,8 @@ def load_uassnet_model(
         base_channels=int(base_channels),
         dropout=float(dropout),
     ).to(resolved_device)
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message="TypedStorage is deprecated")
-        try:
-            checkpoint = torch.load(weights_path, map_location=resolved_device, weights_only=True)
-        except TypeError:
-            checkpoint = torch.load(weights_path, map_location=resolved_device)
-    model.load_state_dict(_extract_state_dict(checkpoint), strict=True)
+    checkpoint = load_torch_checkpoint(weights_path, map_location=resolved_device)
+    model.load_state_dict(extract_model_state_dict(checkpoint), strict=True)
     model.eval()
     return model, resolved_device
 

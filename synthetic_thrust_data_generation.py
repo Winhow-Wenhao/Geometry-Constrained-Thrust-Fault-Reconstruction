@@ -3,9 +3,9 @@
 Synthetic thrust-fault seismic data generator with planar and Gaussian
 background deformation.
 
-This script corresponds to the step-by-step notebook:
-
-    synthetic_thrust_fault_step_by_step_with_planar_gaussian.ipynb
+This standalone script consolidates the synthetic-data workflow developed in
+internal research notebooks. Those development notebooks are not part of this
+source release; this file is the maintained public implementation.
 
 Workflow
 --------

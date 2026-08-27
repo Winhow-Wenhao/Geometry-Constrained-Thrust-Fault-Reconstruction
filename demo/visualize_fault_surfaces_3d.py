@@ -53,13 +53,13 @@ from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
 import json
 import logging
 import math
 import pickle
 import platform
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -72,6 +72,13 @@ from matplotlib import colors as mpl_colors
 from matplotlib.patches import Patch
 import numpy as np
 import segyio
+
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
+
+from file_utils import sha256_file
 
 
 LOGGER = logging.getLogger("fault3d-viewer")
@@ -158,16 +165,6 @@ class RestrictedNumpyUnpickler(pickle.Unpickler):
             f"Blocked pickle global: {module}.{name}. "
             "Only plain NumPy-array artifacts are accepted."
         )
-
-
-def sha256_file(file_path: str | Path, block_size: int = 4 * 1024 * 1024) -> str:
-    """Return a streaming SHA-256 digest without loading the file into memory."""
-
-    digest = hashlib.sha256()
-    with Path(file_path).open("rb") as input_file:
-        while block := input_file.read(block_size):
-            digest.update(block)
-    return digest.hexdigest()
 
 
 def natural_key(text: str) -> tuple[Any, ...]:

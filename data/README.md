@@ -3,10 +3,10 @@
 Place externally obtained input data under this directory after cloning the
 repository. Run documented commands from the repository root.
 
-Download the seismic inputs from the
-[project Google Drive data folder](https://drive.google.com/drive/folders/1MtPpidmfl3yWqn-X-P5Cn3K74hVw8g6S).
-Google Drive is an external download location: the files are not downloaded
-automatically when this repository is cloned.
+Download the two reference seismic inputs from the citable
+[Zenodo v1.0.0 data record](https://doi.org/10.5281/zenodo.22070539). Use this
+versioned record for download, citation, and reference-file identity. No
+external data are downloaded automatically when this repository is cloned.
 
 Use these locations for real seismic inputs and manual interpretations:
 
@@ -42,6 +42,9 @@ SEG-Y and interpretation CSV files in these input directories are intentionally
 ignored by Git. This directory should contain download instructions and
 checksums, not externally obtained survey volumes or interpretations.
 
-The Google Drive location does not change the provenance or license of the
-external data. See [`../ASSET_LICENSES.md`](../ASSET_LICENSES.md) before using
-or redistributing the seismic files.
+The download location does not change the provenance or license of the external
+data. The two Zenodo subsets are cropped derivatives of the NZ3D/MGL1801 PSDM
+volume ([MGDS DOI 10.26022/IEDA/331022](https://doi.org/10.26022/IEDA/331022))
+and are distributed under CC BY-NC-SA 3.0 US. See
+[`../ASSET_LICENSES.md`](../ASSET_LICENSES.md) before using or redistributing
+the seismic files.

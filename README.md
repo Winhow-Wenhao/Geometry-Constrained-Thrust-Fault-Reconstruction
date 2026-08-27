@@ -18,12 +18,16 @@ This repository contains the current computational workflow for:
 - cross-inline 3D fault linking and surface reconstruction; and
 - visualization of current and legacy 3D surface products.
 
-This is a source-code release with display-only demonstration material. It does
-not distribute model checkpoints, SEG-Y volumes, manual interpretation CSV
-files, legacy pickles, machine-readable demo exports, or survey-specific
-real-label configurations. Users must provide compatible, appropriately
-licensed inputs. See [`demo/README.md`](demo/README.md) for the distinction
-between executable source and precomputed displays.
+This GitHub repository is a source-code release with display-only demonstration
+material. It does not bundle model checkpoints, SEG-Y volumes, manual
+interpretation CSV files, legacy pickles, machine-readable demo exports, or
+survey-specific real-label configurations. The two reference SEG-Y subsets used
+by the demonstrations are distributed separately through the versioned
+[Zenodo data record](https://doi.org/10.5281/zenodo.22070539); the checkpoint,
+legacy pickle, and interpretation inputs remain undistributed. Users must
+provide compatible, appropriately licensed inputs. See
+[`demo/README.md`](demo/README.md) for the distinction between executable source
+and precomputed displays.
 
 This is the core method repository, not a complete archive of every manuscript
 figure, table, or quantitative analysis.
@@ -55,6 +59,9 @@ flowchart LR
 ├── ASSET_LICENSES.md
 ├── MODEL_CARD.md
 ├── requirements.txt
+├── uassnet_model.py
+├── file_utils.py
+├── fault_lines_2d_io.py
 ├── synthetic_thrust_data_generation.py
 ├── real_seismic_label_construction.py
 ├── uassnet_training.py
@@ -88,11 +95,13 @@ flowchart LR
     └── visualization/
 ```
 
-The six root-level Python files are the main computational stages.
-`demo/visualize_fault_surfaces_3d.py` is an additional visualization CLI. The
-source notebook is the executable inline-600 entry point; the `_executed`
-notebook and `demo/figures/` are display-only references. See
-[`demo/README.md`](demo/README.md).
+The six root-level workflow scripts are the main computational stages.
+`uassnet_model.py`, `file_utils.py`, and `fault_lines_2d_io.py` provide the
+shared model, checksum, and versioned 2D-to-3D interface definitions used by
+those stages. `demo/visualize_fault_surfaces_3d.py` is an additional
+visualization CLI. The source notebook is the executable inline-600 entry
+point and imports the maintained root modules; the `_executed` notebook and
+`demo/figures/` are display-only references. See [`demo/README.md`](demo/README.md).
 
 ## Path convention
 
@@ -114,22 +123,25 @@ contracts.
 |---|---|---|---|
 | `model_real.pth` | External / not distributed | Historical reference UASS-Net state dictionary; see [MODEL_CARD.md](MODEL_CARD.md) | `d154ab68869cfc9c789b94835cb2614c182c7dd0fa3fd56cf2af4bb9b2b638aa` |
 | `demo/outputs_400_500.pkl` | External / not distributed | Historical trusted legacy-grid viewer input | `bbac865f3eb57a1c27055bcdf2d2d52fd36f57fb89abe6a109cc2fed006fd1ca` |
-| `data/segy/inline600.segy` | External / not distributed | Exact inline-600 notebook/regression input | `87ed66c6c91839661bf4a7a765175cbd332e0922ce85d63c09b44b91539ff785` |
-| `data/segy/400_500.segy` | External / not distributed | SEG-Y context used to create the 3D display figures | `ca209ae7aec887a019b8aafc7f0f9ba240966e36f7e82b0876fb88c81e7e68cb` |
+| `data/segy/inline600.segy` | External to GitHub / [Zenodo v1.0.0](https://doi.org/10.5281/zenodo.22070539) | Exact inline-600 notebook/regression input | `87ed66c6c91839661bf4a7a765175cbd332e0922ce85d63c09b44b91539ff785` |
+| `data/segy/400_500.segy` | External to GitHub / [Zenodo v1.0.0](https://doi.org/10.5281/zenodo.22070539) | SEG-Y context used to create the 3D display figures | `ca209ae7aec887a019b8aafc7f0f9ba240966e36f7e82b0876fb88c81e7e68cb` |
 | `data/segy/<volume>.segy` | External / not distributed | Other single- or multi-inline inputs | Dataset-specific |
 | `data/interpretations/<line>.csv` | External / not distributed | Manual fault interpretations | Dataset-specific |
 
-Download the external seismic inputs from the
-[project Google Drive data folder](https://drive.google.com/drive/folders/1MtPpidmfl3yWqn-X-P5Cn3K74hVw8g6S),
-keep the documented filenames, and place the required SEG-Y files under
-`data/segy/`. Verify the listed SHA-256 checksums before running the examples.
-See [`data/README.md`](data/README.md) for placement details and
+Download the two reference seismic inputs from the citable
+[Zenodo v1.0.0 data record](https://doi.org/10.5281/zenodo.22070539), keep the
+documented filenames, and place them under `data/segy/`. Use this versioned
+Zenodo record for download, citation, and reference-file identity. Verify the
+listed SHA-256 checksums before running the examples. See
+[`data/README.md`](data/README.md) for placement details and
 [`ASSET_LICENSES.md`](ASSET_LICENSES.md) for provenance and license terms.
 
 No model checkpoint or legacy pickle is supplied or downloaded automatically.
 Train a compatible checkpoint with the workflow below, or provide one obtained
-from an authorized source. The filenames and hashes above identify historical
-reference inputs; they do not grant a license or imply public availability.
+from an authorized source. Their filenames and hashes identify historical
+reference inputs; they do not grant a license or imply public availability. By
+contrast, the two reference SEG-Y subsets are publicly archived through Zenodo
+under CC BY-NC-SA 3.0 US, as documented in `ASSET_LICENSES.md`.
 
 SEG-Y and interpretation files under `data/` are intentionally ignored by Git.
 New results under `outputs/` are also ignored. Alongside the demo source code,
@@ -394,8 +406,10 @@ The source notebook expects the exact historical reference checkpoint named
 SEG-Y at `data/segy/inline600.segy`. It verifies both files against the recorded
 SHA-256 identities, so a newly trained compatible checkpoint cannot substitute
 for the reference checkpoint in this regression notebook. Both files are
-ignored by Git and are not part of this release. After placing those exact
-local inputs, launch:
+ignored by Git and are not bundled in this repository. The SEG-Y subset is
+available from [Zenodo v1.0.0](https://doi.org/10.5281/zenodo.22070539), whereas
+the reference checkpoint remains undistributed. After placing those exact local
+inputs, launch:
 
 ```bash
 python -m notebook demo/fault_process_2d_end_to_end_github.ipynb
@@ -408,12 +422,17 @@ model_real.pth
 data/segy/inline600.segy
 ```
 
+The notebook imports the canonical UASS-Net, SEG-Y reader, inference, and 2D
+post-processing implementations from the root Python modules rather than
+maintaining independent copies of those definitions.
+
 It can be launched with the kernel working directory set to either the
 repository root or `demo/`. The separate
 `demo/fault_process_2d_end_to_end_github_executed.ipynb` retains a precomputed
-display of the historical run. It does not contain the model or SEG-Y input,
-and exact reproduction is not possible unless both external files match the
-recorded reference SHA-256 identities exactly. See
+display of the historical run. It does not contain the model or SEG-Y input.
+Although the SEG-Y subset is public, exact reproduction is not possible unless
+both external files are available and match the recorded reference SHA-256
+identities exactly. See
 [`demo/README.md`](demo/README.md).
 
 ### Command-line interface
@@ -503,8 +522,9 @@ metadata is distributed in this repository. A legacy surface pickle is an
 input to the viewer below and must not be passed to
 `fault_surface_reconstruction_3d.py`.
 
-After supplying a trusted local pickle and placing the matching SEG-Y volume at
-`data/segy/400_500.segy`, run:
+After supplying a trusted local pickle, download the matching `400_500.segy`
+subset from [Zenodo v1.0.0](https://doi.org/10.5281/zenodo.22070539), place it at
+`data/segy/400_500.segy`, and run:
 
 ```bash
 python demo/visualize_fault_surfaces_3d.py \
@@ -522,8 +542,10 @@ python demo/visualize_fault_surfaces_3d.py \
 ```
 
 Display-only PNG examples from the historical workflow are under
-`demo/figures/fault3d_demo_400_500/`. They are not substitutes for the omitted
-pickle, SEG-Y, NPZ, CSV, or JSON inputs and products. New viewer outputs are
+`demo/figures/fault3d_demo_400_500/`. They are not substitutes for inputs and
+products omitted from this GitHub repository. The SEG-Y subset is distributed
+separately through Zenodo; the legacy pickle, NPZ, CSV, and JSON artifacts
+remain undistributed. New viewer outputs are
 written under `outputs/visualization/`. See
 [`demo/README.md`](demo/README.md) for the demo artifact boundary.
 
@@ -561,8 +583,8 @@ Checked for this snapshot:
 - all seven CLI entry points parse `--help`;
 - the UASS-Net CPU sanity check passes;
 - the 3D synthetic self-tests pass;
-- both notebook JSON structures are valid, and the display notebook retains the
-  historical image outputs; and
+- both notebook JSON structures are valid, their source cells match, and the
+  display notebook retains all nine historical image outputs; and
 - no obsolete script names or machine-specific absolute paths remain in the
   current code examples.
 
@@ -583,6 +605,25 @@ JGR: Machine Learning and Computation.
 ```
 
 Replace this entry with the final publication year and DOI when available.
+
+Please also cite the versioned derived-data record that supplies the reference
+SEG-Y subsets:
+
+```text
+Zheng, W., Bell, R. E., Cueto, C., Guasch Batalla, L., John, C.,
+Pasalska, P., and Wang, Y. (2026). Reproducibility Seismic Data for
+Geometry-Constrained Thrust Fault Reconstruction (Version 1.0.0) [Data set].
+Zenodo. https://doi.org/10.5281/zenodo.22070539
+```
+
+The subsets are derived from the following source dataset, which must also be
+cited:
+
+```text
+Bangs, Nathan, et al. (2022). NZ3D seismic reflection data volume - Prestack
+Depth Migration (PSDM). Marine Geoscience Data System (MGDS).
+https://doi.org/10.26022/IEDA/331022
+```
 
 ## Licensing
 

@@ -52,14 +52,18 @@ from fault_post_processing_2d import (
     SegyInlineReader,
     load_uassnet_model,
     process_inline_section,
-    sha256_file,
 )
+from fault_lines_2d_io import (
+    FAULT_LINES_2D_ARTIFACT_TYPE as ARTIFACT_TYPE,
+    FAULT_LINES_2D_POINT_COLUMNS as POINT_COLUMNS,
+    FAULT_LINES_2D_SCHEMA_VERSION as SCHEMA_VERSION,
+    cluster_sort_key as _cluster_sort_key,
+    metadata_path_for_fault_lines,
+)
+from file_utils import sha256_file
 
 
 LOGGER = logging.getLogger("fault2d-batch")
-SCHEMA_VERSION = "fault-lines-2d/1.0"
-ARTIFACT_TYPE = "fault-lines-2d-interface"
-POINT_COLUMNS = ("profile_index", "sample_index")
 REFERENCE_MODEL_SHA256 = (
     "d154ab68869cfc9c789b94835cb2614c182c7dd0fa3fd56cf2af4bb9b2b638aa"
 )
@@ -125,15 +129,6 @@ def select_inline_numbers(
     if not selected:
         raise ValueError("No requested inlines are present in the SEG-Y file.")
     return selected
-
-
-def _cluster_sort_key(cluster_id: Any) -> tuple[int, Any]:
-    if isinstance(cluster_id, (int, np.integer)):
-        return (0, int(cluster_id))
-    try:
-        return (0, int(str(cluster_id)))
-    except ValueError:
-        return (1, str(cluster_id))
 
 
 def _normalise_clusters(
@@ -359,13 +354,6 @@ def _load_json_object(path: str | Path | None) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise TypeError(f"Configuration JSON must contain an object: {input_path}")
     return value
-
-
-def metadata_path_for_fault_lines(output_pickle: str | Path) -> Path:
-    """Return the canonical sidecar path for a 2D fault-line pickle."""
-
-    output_pickle = Path(output_pickle)
-    return output_pickle.with_suffix(".metadata.json")
 
 
 def _default_metadata_path(output_pickle: Path) -> Path:

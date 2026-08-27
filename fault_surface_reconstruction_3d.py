@@ -50,7 +50,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
 import json
 import logging
 import math
@@ -67,14 +66,20 @@ import scipy
 from scipy.ndimage import gaussian_filter
 from scipy.spatial import cKDTree
 
+from fault_lines_2d_io import (
+    FAULT_LINES_2D_ARTIFACT_TYPE,
+    FAULT_LINES_2D_POINT_COLUMNS,
+    FAULT_LINES_2D_SCHEMA_VERSION,
+    cluster_sort_key as _cluster_sort_key,
+    metadata_path_for_fault_lines,
+)
+from file_utils import sha256_file
+
 
 LOGGER = logging.getLogger("fault3d")
 LINE_KEY_PATTERN = re.compile(r"^line_(\d+)$")
 SCHEMA_VERSION = "1.0"
 ALGORITHM_NAME = "forward-progressive-spatial-correlation-3d-fault-reconstruction"
-FAULT_LINES_2D_SCHEMA_VERSION = "fault-lines-2d/1.0"
-FAULT_LINES_2D_ARTIFACT_TYPE = "fault-lines-2d-interface"
-FAULT_LINES_2D_POINT_COLUMNS = ("profile_index", "sample_index")
 LEGACY_ARTIFACT_TYPES = {
     "3D-loader-compatible legacy fault-line pickle",
     FAULT_LINES_2D_ARTIFACT_TYPE,
@@ -213,22 +218,6 @@ class LoadedFaultLines2D:
     sections: dict[int, list[FaultLine]]
     input_metadata: dict[str, Any]
     config: ReconstructionConfig
-
-
-def sha256_file(file_path: str | Path, block_size: int = 1024 * 1024) -> str:
-    """Return the SHA-256 digest of a file."""
-
-    digest = hashlib.sha256()
-    with Path(file_path).open("rb") as input_file:
-        while block := input_file.read(block_size):
-            digest.update(block)
-    return digest.hexdigest()
-
-
-def metadata_path_for_fault_lines(input_pickle: str | Path) -> Path:
-    """Return the canonical metadata sidecar path for a 2D result pickle."""
-
-    return Path(input_pickle).with_suffix(".metadata.json")
 
 
 def load_fault_lines_2d_metadata(
@@ -567,15 +556,6 @@ def _bbox_distance(line_a: FaultLine, line_b: FaultLine) -> float:
 def _orientation_from_tangents(line_a: FaultLine, line_b: FaultLine) -> float:
     dot_product = float(np.clip(np.dot(line_a.tangent, line_b.tangent), -1.0, 1.0))
     return float(np.clip(1.0 - abs(dot_product), 0.0, 1.0))
-
-
-def _cluster_sort_key(cluster_id: Any) -> tuple[int, Any]:
-    if isinstance(cluster_id, (int, np.integer)):
-        return (0, int(cluster_id))
-    try:
-        return (0, int(str(cluster_id)))
-    except ValueError:
-        return (1, str(cluster_id))
 
 
 def _make_fault_line(

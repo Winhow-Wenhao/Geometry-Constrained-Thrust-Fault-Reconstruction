@@ -28,7 +28,6 @@ import argparse
 import json
 import math
 import random
-from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -39,6 +38,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
+
+from uassnet_model import (
+    ASPP,
+    ConvBlock,
+    DecoderBlock,
+    SEBlock,
+    UASSNet,
+    extract_model_state_dict,
+    load_torch_checkpoint,
+)
 
 
 CANONICAL_ARRAY_AXIS_ORDER = ("x", "z")
@@ -294,132 +303,6 @@ def make_loaders(cfg: TrainConfig) -> Tuple[DataLoader, DataLoader, FaultPatchDa
     return train_loader, val_loader, train_set
 
 
-class ConvBlock(nn.Module):
-    def __init__(self, in_ch: int, out_ch: int):
-        super().__init__()
-        self.layers = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 3, padding=1, bias=False),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_ch, out_ch, 3, padding=1, bias=False),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.layers(x)
-
-
-class SEBlock(nn.Module):
-    def __init__(self, channels: int, reduction: int = 8):
-        super().__init__()
-        hidden = max(channels // reduction, 1)
-        self.layers = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(channels, hidden, 1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(hidden, channels, 1),
-            nn.Sigmoid(),
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x * self.layers(x)
-
-
-class ASPP(nn.Module):
-    def __init__(self, in_ch: int, out_ch: int):
-        super().__init__()
-        self.b1 = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 1, bias=False),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-        )
-        self.b2 = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 3, padding=6, dilation=6, bias=False),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-        )
-        self.b3 = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 3, padding=12, dilation=12, bias=False),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-        )
-        self.b4 = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 3, padding=18, dilation=18, bias=False),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-        )
-        self.fuse = nn.Sequential(
-            nn.Conv2d(out_ch * 4, out_ch, 1, bias=False),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = torch.cat([self.b1(x), self.b2(x), self.b3(x), self.b4(x)], dim=1)
-        return self.fuse(x)
-
-
-class DecoderBlock(nn.Module):
-    def __init__(self, up_ch: int, skip_ch: int, out_ch: int, dropout: float):
-        super().__init__()
-        self.se = SEBlock(skip_ch)
-        self.dropout = nn.Dropout2d(dropout)
-        self.conv = ConvBlock(up_ch + skip_ch, out_ch)
-
-    def forward(self, x: torch.Tensor, skip: torch.Tensor) -> torch.Tensor:
-        x = F.interpolate(
-            x,
-            size=skip.shape[-2:],
-            mode="nearest"
-        )
-        skip = self.se(skip)
-        x = torch.cat([skip, x], dim=1)
-        x = self.dropout(x)
-        return self.conv(x)
-
-
-class UASSNet(nn.Module):
-    def __init__(self, in_ch: int = 1, out_ch: int = 1, base: int = 16, dropout: float = 0.2):
-        super().__init__()
-
-        c1 = base
-        c2 = base * 2
-        c3 = base * 4
-        c4 = base * 8
-        c5 = base * 32
-
-        self.enc1 = ConvBlock(in_ch, c1)
-        self.enc2 = ConvBlock(c1, c2)
-        self.enc3 = ConvBlock(c2, c3)
-        self.enc4 = ConvBlock(c3, c4)
-        self.enc5 = ConvBlock(c4, c5)
-        self.pool = nn.MaxPool2d(2)
-
-        self.aspp = ASPP(c5, c4)
-
-        self.dec4 = DecoderBlock(c4, c4, c4, dropout)
-        self.dec3 = DecoderBlock(c4, c3, c3, dropout)
-        self.dec2 = DecoderBlock(c3, c2, c2, dropout)
-        self.dec1 = DecoderBlock(c2, c1, c1, dropout)
-
-        self.out_conv = nn.Conv2d(c1, out_ch, 3, padding=1)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        e1 = self.enc1(x)
-        e2 = self.enc2(self.pool(e1))
-        e3 = self.enc3(self.pool(e2))
-        e4 = self.enc4(self.pool(e3))
-        e5 = self.enc5(self.pool(e4))
-
-        x = self.aspp(e5)
-        x = self.dec4(x, e4)
-        x = self.dec3(x, e3)
-        x = self.dec2(x, e2)
-        x = self.dec1(x, e1)
-        return self.out_conv(x)
-
-
 def compute_class_weights(dataset: FaultPatchDataset) -> Tuple[float, float]:
     pos = 0.0
     total = 0.0
@@ -537,35 +420,6 @@ def save_checkpoint(
     )
 
 
-def _looks_like_state_dict(candidate: Any) -> bool:
-    """Return True for a non-empty mapping of parameter names to tensors."""
-
-    return (
-        isinstance(candidate, Mapping)
-        and len(candidate) > 0
-        and all(isinstance(key, str) for key in candidate)
-        and all(isinstance(value, torch.Tensor) for value in candidate.values())
-    )
-
-
-def _extract_model_state_dict(checkpoint: Any) -> Mapping[str, torch.Tensor]:
-    """Extract weights from raw or commonly wrapped PyTorch checkpoints."""
-
-    if _looks_like_state_dict(checkpoint):
-        return checkpoint
-
-    if isinstance(checkpoint, Mapping):
-        for key in ("model", "model_state_dict", "state_dict"):
-            candidate = checkpoint.get(key)
-            if _looks_like_state_dict(candidate):
-                return candidate
-
-    raise ValueError(
-        "Unsupported checkpoint format. Expected a raw state_dict or a mapping "
-        "containing 'model', 'model_state_dict', or 'state_dict'."
-    )
-
-
 def load_model_weights(
     model: nn.Module,
     checkpoint_path: str | Path,
@@ -578,17 +432,8 @@ def load_model_weights(
     if not checkpoint_path.is_file():
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path.resolve()}")
 
-    try:
-        checkpoint = torch.load(
-            checkpoint_path,
-            map_location=device,
-            weights_only=True,
-        )
-    except TypeError:
-        # PyTorch versions before the weights_only argument remain supported.
-        checkpoint = torch.load(checkpoint_path, map_location=device)
-
-    state = _extract_model_state_dict(checkpoint)
+    checkpoint = load_torch_checkpoint(checkpoint_path, map_location=device)
+    state = extract_model_state_dict(checkpoint)
     model.load_state_dict(state, strict=strict)
     return checkpoint
 
