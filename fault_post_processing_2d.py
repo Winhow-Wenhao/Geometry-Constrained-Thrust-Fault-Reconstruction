@@ -1493,8 +1493,9 @@ def process_single_inline(
 def validate_inline600_reference(
     result: SingleInlineResult,
     verify_file_hashes: bool = True,
+    verify_stage_counts: bool = True,
 ) -> dict[str, Any]:
-    """Validate the exact reference input identity, shape, and stage counts."""
+    """Validate the reference input identity and, optionally, legacy stage counts."""
 
     errors: list[str] = []
     if result.inline_number != REFERENCE_INLINE:
@@ -1520,9 +1521,10 @@ def validate_inline600_reference(
                     f"SEG-Y SHA-256 is {seismic_hash}, expected {REFERENCE_SEISMIC_SHA256}"
                 )
     actual_counts = result.stage_counts
-    for name, expected in REFERENCE_COUNTS.items():
-        if actual_counts.get(name) != expected:
-            errors.append(f"{name} is {actual_counts.get(name)}, expected {expected}")
+    if verify_stage_counts:
+        for name, expected in REFERENCE_COUNTS.items():
+            if actual_counts.get(name) != expected:
+                errors.append(f"{name} is {actual_counts.get(name)}, expected {expected}")
     if errors:
         raise AssertionError("Inline-600 reference validation failed:\n- " + "\n- ".join(errors))
     return {
@@ -1530,6 +1532,7 @@ def validate_inline600_reference(
         "inline": result.inline_number,
         "shape": list(result.probability_map.shape),
         "counts": actual_counts,
+        "stage_counts_validated": bool(verify_stage_counts),
     }
 
 
