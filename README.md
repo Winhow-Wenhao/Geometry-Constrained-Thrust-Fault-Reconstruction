@@ -21,13 +21,14 @@ This repository contains the current computational workflow for:
 This GitHub repository is a source-code release with display-only demonstration
 material. It does not bundle model checkpoints, SEG-Y volumes, manual
 interpretation CSV files, legacy pickles, machine-readable demo exports, or
-survey-specific real-label configurations. The two reference SEG-Y subsets used
-by the demonstrations are distributed separately through the versioned
-[Zenodo data record](https://doi.org/10.5281/zenodo.22070539); the checkpoint,
-legacy pickle, and interpretation inputs remain undistributed. Users must
-provide compatible, appropriately licensed inputs. See
-[`demo/README.md`](demo/README.md) for the distinction between executable source
-and precomputed displays.
+survey-specific real-label configurations. The two reference SEG-Y subsets, the
+reference UASS-Net checkpoint `model_real.pth`, and the legacy fault-surface
+pickle `outputs_400_500.pkl` used by the demonstrations are distributed
+separately through the versioned Zenodo data record
+([Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723)); the manual interpretation inputs and
+training patches remain undistributed. Users must provide any other inputs
+themselves. See [`demo/README.md`](demo/README.md) for the distinction between
+executable source and precomputed displays.
 
 This is the core method repository, not a complete archive of every manuscript
 figure, table, or quantitative analysis.
@@ -121,32 +122,36 @@ contracts.
 
 | Path | Status | Purpose | SHA-256 |
 |---|---|---|---|
-| `model_real.pth` | External / not distributed | Historical reference UASS-Net state dictionary; see [MODEL_CARD.md](MODEL_CARD.md) | `d154ab68869cfc9c789b94835cb2614c182c7dd0fa3fd56cf2af4bb9b2b638aa` |
-| `demo/outputs_400_500.pkl` | External / not distributed | Historical trusted legacy-grid viewer input | `bbac865f3eb57a1c27055bcdf2d2d52fd36f57fb89abe6a109cc2fed006fd1ca` |
-| `data/segy/inline600.segy` | External to GitHub / [Zenodo v1.0.0](https://doi.org/10.5281/zenodo.22070539) | Exact inline-600 notebook/regression input | `87ed66c6c91839661bf4a7a765175cbd332e0922ce85d63c09b44b91539ff785` |
-| `data/segy/400_500.segy` | External to GitHub / [Zenodo v1.0.0](https://doi.org/10.5281/zenodo.22070539) | SEG-Y context used to create the 3D display figures | `ca209ae7aec887a019b8aafc7f0f9ba240966e36f7e82b0876fb88c81e7e68cb` |
+| `model_real.pth` | External to GitHub / [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723) | Reference UASS-Net state dictionary; see [MODEL_CARD.md](MODEL_CARD.md) | `d154ab68869cfc9c789b94835cb2614c182c7dd0fa3fd56cf2af4bb9b2b638aa` |
+| `demo/outputs_400_500.pkl` | External to GitHub / [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723) | Trusted legacy-grid viewer input for the 400--500 demonstration | `bbac865f3eb57a1c27055bcdf2d2d52fd36f57fb89abe6a109cc2fed006fd1ca` |
+| `data/segy/inline600.segy` | External to GitHub / [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723) | Exact inline-600 notebook/regression input | `87ed66c6c91839661bf4a7a765175cbd332e0922ce85d63c09b44b91539ff785` |
+| `data/segy/400_500.segy` | External to GitHub / [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723) | SEG-Y context used to create the 3D display figures | `ca209ae7aec887a019b8aafc7f0f9ba240966e36f7e82b0876fb88c81e7e68cb` |
 | `data/segy/<volume>.segy` | External / not distributed | Other single- or multi-inline inputs | Dataset-specific |
 | `data/interpretations/<line>.csv` | External / not distributed | Manual fault interpretations | Dataset-specific |
 
-Download the two reference seismic inputs from the citable
-[Zenodo v1.0.0 data record](https://doi.org/10.5281/zenodo.22070539), keep the
-documented filenames, and place them under `data/segy/`. Use this versioned
-Zenodo record for download, citation, and reference-file identity. Verify the
-listed SHA-256 checksums before running the examples. See
-[`data/README.md`](data/README.md) for placement details and
-[`ASSET_LICENSES.md`](ASSET_LICENSES.md) for provenance and license terms.
+Download the four reference files from the citable
+[Zenodo v1.1.0 data record](https://doi.org/10.5281/zenodo.22641723), keep the
+documented filenames, and place them at the paths listed above: the two SEG-Y
+subsets under `data/segy/`, `model_real.pth` in the repository root, and
+`outputs_400_500.pkl` under `demo/`. Use this versioned Zenodo record for
+download, citation, and reference-file identity. Verify the listed SHA-256
+checksums before running the examples. See [`data/README.md`](data/README.md)
+for placement details and [`ASSET_LICENSES.md`](ASSET_LICENSES.md) for
+provenance and license terms.
 
-No model checkpoint or legacy pickle is supplied or downloaded automatically.
-Train a compatible checkpoint with the workflow below, or provide one obtained
-from an authorized source. Their filenames and hashes identify historical
-reference inputs; they do not grant a license or imply public availability. By
-contrast, the two reference SEG-Y subsets are publicly archived through Zenodo
-under CC BY-NC-SA 3.0 US, as documented in `ASSET_LICENSES.md`.
+Nothing is downloaded automatically when the repository is cloned. The
+reference checkpoint from Zenodo reproduces the stored inline-600 outputs;
+alternatively, train a compatible checkpoint with the workflow below for
+non-reference runs. All four Zenodo files are derivatives of the NZ3D dataset
+and are archived under CC BY-NC-SA 3.0 US, as documented in
+`ASSET_LICENSES.md`. Manual interpretation files and training patches are not
+distributed.
 
-SEG-Y and interpretation files under `data/` are intentionally ignored by Git.
-New results under `outputs/` are also ignored. Alongside the demo source code,
-only display PNGs and the precomputed display notebook are retained under
-`demo/`; raw model, pickle, NPZ, CSV, and JSON artifacts are not distributed.
+SEG-Y, checkpoint, pickle, and interpretation files are intentionally ignored by
+Git. New results under `outputs/` are also ignored. Alongside the demo source
+code, only display PNGs and the precomputed display notebook are retained under
+`demo/`; model, pickle, NPZ, CSV, and JSON artifacts are not stored in the
+repository.
 
 ## Installation
 
@@ -410,9 +415,8 @@ The source notebook expects the exact historical reference checkpoint named
 SEG-Y at `data/segy/inline600.segy`. It verifies both files against the recorded
 SHA-256 identities, so a newly trained compatible checkpoint cannot substitute
 for the reference checkpoint in this regression notebook. Both files are
-ignored by Git and are not bundled in this repository. The SEG-Y subset is
-available from [Zenodo v1.0.0](https://doi.org/10.5281/zenodo.22070539), whereas
-the reference checkpoint remains undistributed. After placing those exact local
+ignored by Git and are not bundled in this repository; download them from
+[Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723). After placing those exact local
 inputs, launch:
 
 ```bash
@@ -434,10 +438,8 @@ It can be launched with the kernel working directory set to either the
 repository root or `demo/`. The separate
 `demo/fault_process_2d_end_to_end_github_executed.ipynb` retains a precomputed
 display of the historical run. It does not contain the model or SEG-Y input.
-Although the SEG-Y subset is public, exact reproduction is not possible unless
-both external files are available and match the recorded reference SHA-256
-identities exactly. See
-[`demo/README.md`](demo/README.md).
+Exact reproduction requires both Zenodo files to match the recorded reference
+SHA-256 identities exactly. See [`demo/README.md`](demo/README.md).
 
 ### Command-line interface
 
@@ -521,18 +523,19 @@ The output directory must be new or empty. Principal outputs are:
 ## 7. Use the legacy viewer with local inputs
 
 The visualization CLI retains support for trusted, already-gridded legacy
-surface pickles. No legacy pickle, normalized NPZ, CSV inventory, or JSON
-metadata is distributed in this repository. A legacy surface pickle is an
-input to the viewer below and must not be passed to
-`fault_surface_reconstruction_3d.py`.
+surface pickles. The legacy pickle used for the 400--500 demonstration,
+`outputs_400_500.pkl`, and its seismic context `400_500.segy` are distributed
+through [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723); the normalized NPZ, CSV
+inventory, and JSON metadata written by the viewer are regenerated locally and
+are not distributed. A legacy surface pickle is an input to the viewer below
+and must not be passed to `fault_surface_reconstruction_3d.py`.
 
-After supplying a trusted local pickle, download the matching `400_500.segy`
-subset from [Zenodo v1.0.0](https://doi.org/10.5281/zenodo.22070539), place it at
-`data/segy/400_500.segy`, and run:
+Download both files, verify their SHA-256 checksums against the table above,
+place them at `demo/outputs_400_500.pkl` and `data/segy/400_500.segy`, and run:
 
 ```bash
 python demo/visualize_fault_surfaces_3d.py \
-  /path/to/trusted_legacy_surfaces.pkl \
+  demo/outputs_400_500.pkl \
   --input-format legacy-grid-pickle \
   --allow-legacy-pickle \
   --segy data/segy/400_500.segy \
@@ -546,12 +549,12 @@ python demo/visualize_fault_surfaces_3d.py \
 ```
 
 Display-only PNG examples from the historical workflow are under
-`demo/figures/fault3d_demo_400_500/`. They are not substitutes for inputs and
-products omitted from this GitHub repository. The SEG-Y subset is distributed
-separately through Zenodo; the legacy pickle, NPZ, CSV, and JSON artifacts
-remain undistributed. New viewer outputs are
-written under `outputs/visualization/`. See
-[`demo/README.md`](demo/README.md) for the demo artifact boundary.
+`demo/figures/fault3d_demo_400_500/`. They are not substitutes for the inputs
+and products omitted from this GitHub repository. The SEG-Y subset and the
+legacy pickle are distributed separately through Zenodo; the NPZ, CSV, and JSON
+artifacts are regenerated by the command above. New viewer outputs are written
+under `outputs/visualization/`. See [`demo/README.md`](demo/README.md) for the
+demo artifact boundary.
 
 ## Coordinate and artifact conventions
 
@@ -579,8 +582,8 @@ Included display material:
 - `demo/fault_process_2d_end_to_end_github_executed.ipynb`: a precomputed
   display notebook without its external checkpoint or SEG-Y input.
 
-The repository does not include the raw legacy pickle or generated NPZ, CSV,
-or JSON demo products.
+The repository does not include the legacy pickle (available from Zenodo) or
+the generated NPZ, CSV, or JSON demo products.
 
 Checked for this snapshot:
 
@@ -611,14 +614,17 @@ JGR: Machine Learning and Computation.
 Replace this entry with the final publication year and DOI when available.
 
 Please also cite the versioned derived-data record that supplies the reference
-SEG-Y subsets:
+SEG-Y subsets, the reference checkpoint, and the legacy fault-surface pickle:
 
 ```text
 Zheng, W., Bell, R. E., Cueto, C., Guasch Batalla, L., John, C.,
 Pasalska, P., and Wang, Y. (2026). Reproducibility Seismic Data for
-Geometry-Constrained Thrust Fault Reconstruction (Version 1.0.0) [Data set].
-Zenodo. https://doi.org/10.5281/zenodo.22070539
+Geometry-Constrained Thrust Fault Reconstruction (Version 1.1.0) [Data set].
+Zenodo. https://doi.org/10.5281/zenodo.22641723
 ```
+
+The concept DOI https://doi.org/10.5281/zenodo.22070538 resolves to the latest
+version of that record.
 
 The subsets are derived from the following source dataset, which must also be
 cited:
@@ -640,5 +646,6 @@ interpretation geometry and has not assigned or transferred those rights. The
 included notebook outputs and PNG display assets are separately released under
 [CC BY-NC-SA 3.0 US](https://creativecommons.org/licenses/by-nc-sa/3.0/us/),
 subject to the NZ3D attribution and modification notices documented in
-[ASSET_LICENSES.md](ASSET_LICENSES.md). Model weights remain external and have
-no asserted redistribution or reuse license.
+[ASSET_LICENSES.md](ASSET_LICENSES.md). The reference checkpoint and the legacy
+fault-surface pickle are distributed through Zenodo under CC BY-NC-SA 3.0 US as
+derivatives of the NZ3D dataset; they are not covered by the MIT License.

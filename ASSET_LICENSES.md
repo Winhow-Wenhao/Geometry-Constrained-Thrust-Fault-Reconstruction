@@ -1,13 +1,15 @@
 # Asset licensing and provenance
 
-Last reviewed: 2026-08-26
+Last reviewed: 2026-09-07
 
 This document records the provenance and release status of non-code assets
 associated with this repository. This source-code release with display-only
 material contains code, the source and executed 2D notebooks, and precomputed
 PNG figures. It does not contain model weights, SEG-Y data, or raw/numeric demo
-products. The two reference SEG-Y subsets are distributed separately through
-the versioned [Zenodo data record](https://doi.org/10.5281/zenodo.22070539).
+products. The two reference SEG-Y subsets, the reference checkpoint
+`model_real.pth`, and the legacy fault-surface pickle `outputs_400_500.pkl` are
+distributed separately through the versioned Zenodo data record
+([Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723)).
 
 This inventory is not legal advice and does not replace the terms published by
 the original data provider. "Display asset" describes an asset's role in this
@@ -23,7 +25,8 @@ The MIT License does not automatically apply to:
 
 - the stored outputs in the executed notebook;
 - the precomputed 2D or 3D PNG figures;
-- `model_real.pth`;
+- `model_real.pth` and `demo/outputs_400_500.pkl`, which are distributed
+  through Zenodo under CC BY-NC-SA 3.0 US;
 - external SEG-Y files;
 - manual fault interpretations or real training labels; or
 - fault-surface files and other scientific data products derived from those
@@ -58,9 +61,9 @@ Copyright in those interpretation-geometry and repository-authored
 visualization contributions is held by Wenhao Zheng. He authorizes their public
 distribution under
 [CC BY-NC-SA 3.0 US](https://creativecommons.org/licenses/by-nc-sa/3.0/us/).
-This declaration does not claim ownership of the underlying NZ3D seismic data,
-the external model checkpoint, or any other third-party material. Those
-components remain subject to their own terms.
+This declaration does not claim ownership of the underlying NZ3D seismic data
+or any other third-party material. Those components remain subject to their own
+terms.
 
 ## Asset inventory
 
@@ -68,11 +71,11 @@ components remain subject to their own terms.
 |---|---|---|---|
 | Source code, software documentation, and source cells in [`demo/fault_process_2d_end_to_end_github.ipynb`](demo/fault_process_2d_end_to_end_github.ipynb) | Included | Authored for the accompanying manuscript | **Confirmed:** MIT; see [LICENSE](LICENSE). The source notebook has no stored execution outputs. |
 | [`demo/fault_process_2d_end_to_end_github_executed.ipynb`](demo/fault_process_2d_end_to_end_github_executed.ipynb) | Included / display asset | Same authored source cells plus stored reference outputs from the external checkpoint and NZ3D inline | MIT covers the authored source cells. The stored display outputs, including Wenhao Zheng's confirmed interpretation-geometry contributions, are released under CC BY-NC-SA 3.0 US. Outputs containing NZ3D amplitudes must retain source attribution and identify the visualization and overlay changes. |
-| `model_real.pth` | External / not distributed | Reference UASS-Net raw PyTorch state dictionary | No public model-weight license is asserted. Confirm the weight rightsholder, training-data terms, and an explicit weight license before any later distribution. |
-| `data/segy/inline600.segy` | External to repository / distributed separately | Cropped derivative of the NZ3D/MGL1801 PSDM volume described below | **Published:** [Zenodo v1.0.0](https://doi.org/10.5281/zenodo.22070539), under CC BY-NC-SA 3.0 US. Reuse must retain attribution, identify the crop or other changes, remain non-commercial, and use compatible ShareAlike terms. |
-| `data/segy/400_500.segy` | External to repository / distributed separately | Cropped derivative of the same NZ3D/MGL1801 PSDM volume | **Published:** [Zenodo v1.0.0](https://doi.org/10.5281/zenodo.22070539), under CC BY-NC-SA 3.0 US and subject to the same conditions. |
-| `demo/outputs_400_500.pkl` | External / not distributed | Legacy gridded fault-surface product derived from NZ3D seismic data and Wenhao Zheng's interpretation | Interpretation-geometry rightsholder confirmed. The file remains excluded by release choice. If it is released later, apply CC BY-NC-SA 3.0 US and retain all applicable NZ3D attribution and change notices. |
-| `outputs/visualization/fault3d_demo_400_500/surfaces_normalized.npz`, all CSV files in that directory, and `outputs/visualization/fault3d_demo_400_500/visualization_metadata.json` | External / not distributed | Numeric and metadata derivatives of `demo/outputs_400_500.pkl` generated at the current viewer output path | Interpretation-geometry rightsholder confirmed. These files remain excluded by release choice; any later release must retain provenance and use CC BY-NC-SA 3.0 US. |
+| `model_real.pth` | External to repository / distributed separately | Reference UASS-Net raw PyTorch state dictionary, trained on synthetic data and on patches derived from the NZ3D/MGL1801 PSDM volume | **Published:** [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723), under CC BY-NC-SA 3.0 US as a derivative of the NZ3D dataset. Reuse must credit the NZ3D source and the Zenodo record, remain non-commercial, identify changes, and use compatible ShareAlike terms. See [MODEL_CARD.md](MODEL_CARD.md). |
+| `data/segy/inline600.segy` | External to repository / distributed separately | Cropped derivative of the NZ3D/MGL1801 PSDM volume described below | **Published:** [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723) (first released in v1.0.0), under CC BY-NC-SA 3.0 US. Reuse must retain attribution, identify the crop or other changes, remain non-commercial, and use compatible ShareAlike terms. |
+| `data/segy/400_500.segy` | External to repository / distributed separately | Cropped derivative of the same NZ3D/MGL1801 PSDM volume | **Published:** [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723) (first released in v1.0.0), under CC BY-NC-SA 3.0 US and subject to the same conditions. |
+| `demo/outputs_400_500.pkl` | External to repository / distributed separately | Legacy gridded fault-surface product derived from NZ3D seismic data and Wenhao Zheng's interpretation | **Published:** [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723), under CC BY-NC-SA 3.0 US. Interpretation-geometry rightsholder confirmed. Reuse must retain the NZ3D attribution and change notices recorded in the Zenodo record. |
+| `outputs/visualization/fault3d_demo_400_500/surfaces_normalized.npz`, all CSV files in that directory, and `outputs/visualization/fault3d_demo_400_500/visualization_metadata.json` | External / not distributed | Numeric and metadata derivatives of `demo/outputs_400_500.pkl` generated at the current viewer output path | Interpretation-geometry rightsholder confirmed. These files are not distributed; they are regenerated locally from the published pickle with the viewer command in the README, and any later release must retain provenance and use CC BY-NC-SA 3.0 US. |
 | `demo/figures/fault2d_demo_600/01_*.png` through `08_*.png` | Included / display assets | Model and geometry-processing results derived from the external reference checkpoint and NZ3D inline | Copyright in Wenhao Zheng's interpretation-geometry and visualization contributions is confirmed. Included display assets are released under CC BY-NC-SA 3.0 US and are not covered by MIT. |
 | [`demo/figures/fault2d_demo_600/09_final_fault_traces_on_seismic.png`](demo/figures/fault2d_demo_600/09_final_fault_traces_on_seismic.png) | Included / display asset | NZ3D inline amplitude image with Wenhao Zheng's derived fault traces overlaid | Released under CC BY-NC-SA 3.0 US. Attribution, NonCommercial, ShareAlike, and identification of changes are required. Changes include inline extraction/cropping, display scaling, and fault-trace overlay. Interpretation-geometry rightsholder confirmed. |
 | [`demo/figures/fault3d_demo_400_500/fault_surfaces_map_view.png`](demo/figures/fault3d_demo_400_500/fault_surfaces_map_view.png) and [`fault_surfaces_oblique.png`](demo/figures/fault3d_demo_400_500/fault_surfaces_oblique.png) | Included / display assets | Rendered geometry derived from Wenhao Zheng's external legacy fault-surface product | Copyright in the interpretation-geometry and visualization contributions is confirmed. Included display assets are released under CC BY-NC-SA 3.0 US and are not covered by MIT. |
@@ -82,17 +85,20 @@ components remain subject to their own terms.
 
 ## Zenodo derived-data record
 
-The two reference SEG-Y subsets are archived independently from this GitHub
-source-code repository in:
+The two reference SEG-Y subsets, the reference checkpoint, and the legacy
+fault-surface pickle are archived independently from this GitHub source-code
+repository in:
 
 > Zheng, Wenhao, et al. (2026). *Reproducibility Seismic Data for
-> Geometry-Constrained Thrust Fault Reconstruction* (Version 1.0.0). Zenodo.
-> https://doi.org/10.5281/zenodo.22070539
+> Geometry-Constrained Thrust Fault Reconstruction* (Version 1.1.0). Zenodo.
+> https://doi.org/10.5281/zenodo.22641723
 
-The record contains `inline600.segy`, `400_500.segy`, their checksum manifest,
-and standalone data-license and data-README files. It identifies the MGDS source
-record below as `IsDerivedFrom` and distributes the cropped subsets under
-CC BY-NC-SA 3.0 US. The all-versions concept DOI is
+Version 1.1.0 contains `inline600.segy`, `400_500.segy`, `model_real.pth`,
+`outputs_400_500.pkl`, their checksum manifest, and standalone data-license and
+data-README files. Version 1.0.0 (https://doi.org/10.5281/zenodo.22070539)
+contained only the two SEG-Y files and their manifest. The record identifies
+the MGDS source record below as `IsDerivedFrom` and distributes all four data
+files under CC BY-NC-SA 3.0 US. The all-versions concept DOI is
 https://doi.org/10.5281/zenodo.22070538; reproducibility instructions and fixed
 checksums should cite the version DOI above.
 
@@ -136,31 +142,37 @@ repository-authored visualization contributions.
 ## Recorded external asset identities
 
 The following hashes identify the external files used for the reference
-workflow. For the unpublished checkpoint and legacy pickle, a recorded hash does
-not mean that redistribution permission has been granted. Distribution and reuse
-of the two SEG-Y subsets are governed by the Zenodo record and the terms stated
-above.
+workflow. All four files are distributed through the Zenodo record; the hashes
+identify the exact published files, and distribution and reuse are governed by
+the Zenodo record and the terms stated above.
 
 | External asset | Size (bytes) | SHA-256 | Distribution |
 |---|---:|---|---|
-| `model_real.pth` | 23,235,267 | `d154ab68869cfc9c789b94835cb2614c182c7dd0fa3fd56cf2af4bb9b2b638aa` | External / not distributed |
-| `demo/outputs_400_500.pkl` | 9,625,283 | `bbac865f3eb57a1c27055bcdf2d2d52fd36f57fb89abe6a109cc2fed006fd1ca` | External / not distributed |
-| `data/segy/inline600.segy` | 102,888,720 | `87ed66c6c91839661bf4a7a765175cbd332e0922ce85d63c09b44b91539ff785` | [Zenodo v1.0.0](https://doi.org/10.5281/zenodo.22070539) |
-| `data/segy/400_500.segy` | 3,463,802,640 | `ca209ae7aec887a019b8aafc7f0f9ba240966e36f7e82b0876fb88c81e7e68cb` | [Zenodo v1.0.0](https://doi.org/10.5281/zenodo.22070539) |
+| `model_real.pth` | 23,235,267 | `d154ab68869cfc9c789b94835cb2614c182c7dd0fa3fd56cf2af4bb9b2b638aa` | [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723) |
+| `demo/outputs_400_500.pkl` | 9,625,283 | `bbac865f3eb57a1c27055bcdf2d2d52fd36f57fb89abe6a109cc2fed006fd1ca` | [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723) |
+| `data/segy/inline600.segy` | 102,888,720 | `87ed66c6c91839661bf4a7a765175cbd332e0922ce85d63c09b44b91539ff785` | [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723) |
+| `data/segy/400_500.segy` | 3,463,802,640 | `ca209ae7aec887a019b8aafc7f0f9ba240966e36f7e82b0876fb88c81e7e68cb` | [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723) |
 
-## Requirements for any later model-weight release
+## Model-weight release record
 
-Before publicly distributing `model_real.pth`, record:
+`model_real.pth` was released on 2026-09-07 through Zenodo record version
+1.1.0 with the following record:
 
-- the weight rightsholder and their authorization to release it;
-- the exact training-data sources and applicable terms;
-- an explicit model-weight license;
-- the model version and release date; and
-- the required model and manuscript citation.
+- **Rightsholder and authorization:** Wenhao Zheng, who trained the checkpoint,
+  authorizes its release; the manuscript co-authors are listed as creators of
+  the Zenodo record.
+- **Training-data sources and terms:** synthetic data generated by
+  `synthetic_thrust_data_generation.py`, and manually interpreted patches
+  derived from the NZ3D/MGL1801 PSDM volume (CC BY-NC-SA 3.0 US). The
+  checkpoint is therefore distributed as a derivative of the NZ3D dataset.
+- **Model-weight license:** CC BY-NC-SA 3.0 US, stated in the `LICENSE` file of
+  the Zenodo record.
+- **Version and release date:** Zenodo record version 1.1.0, 2026-09-07.
+- **Required citation:** the manuscript, the Zenodo record, and the NZ3D/MGDS
+  source dataset, as listed in the [README citation section](README.md#citation).
 
-Any later license must be stated explicitly here and in
-[MODEL_CARD.md](MODEL_CARD.md); it must not be inferred from the source-code
-license.
+The license is stated explicitly here and in [MODEL_CARD.md](MODEL_CARD.md);
+it must not be inferred from the source-code license.
 
 ## Current release status
 
@@ -171,13 +183,10 @@ NZ3D provenance and attribution, modification notices, and external reference
 hashes are recorded above. Wenhao Zheng's interpretation-geometry and
 visualization contributions are released under the terms stated in this file.
 
-The two reference SEG-Y inputs are not bundled in this GitHub repository but are
-distributed separately through Zenodo. Model weights, manual interpretation
-files, legacy pickles, and raw or numeric demo products remain intentionally
-undistributed. Their absence is part of the defined scope of this release and
-does not represent an unfinished release task.
-
-If a model checkpoint is distributed in the future, its rightsholder,
-training-data permissions, explicit model-weight license, version, release
-date, and required citations must first be recorded as specified in
-"Requirements for any later model-weight release" above.
+The two reference SEG-Y inputs, the reference checkpoint, and the legacy
+fault-surface pickle are not bundled in this GitHub repository but are
+distributed separately through Zenodo version 1.1.0. Manual interpretation
+files, real training patches, and the raw or numeric demo products regenerated
+by the viewer remain intentionally undistributed. Their absence is part of the
+defined scope of this release and does not represent an unfinished release
+task.

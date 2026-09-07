@@ -1616,9 +1616,9 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "model_weights",
         type=Path,
         help=(
-            "Path to a user-supplied compatible UASS-Net model state dictionary; "
-            "the historical reference filename is model_real.pth, which is not "
-            "distributed with this repository."
+            "Path to a compatible UASS-Net model state dictionary; the reference "
+            "checkpoint model_real.pth is available from the Zenodo data record "
+            "(doi:10.5281/zenodo.22641723), not from this repository."
         ),
     )
     parser.add_argument("--inline", type=int, default=REFERENCE_INLINE, dest="inline_number")
