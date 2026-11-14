@@ -144,7 +144,7 @@ The current `uassnet_training.py` defaults are:
 | Transfer learning | 50 epochs, initial learning rate `1e-5` |
 | Transfer data | Pass `--data-root outputs/datasets/real_labels` explicitly |
 | Transfer initialization | Required explicitly through `--pretrained`; the CLI rejects transfer mode without it |
-| Encoder freezing | Disabled by default; `--freeze-encoder` is valid only for transfer learning with a pretrained checkpoint |
+| Encoder freezing | Disabled by default; `--freeze-encoder` (the manuscript configuration) freezes the encoder parameters and keeps the encoder BatchNorm running statistics fixed; valid only for transfer learning with a pretrained checkpoint |
 | Scheduler | StepLR, step size 20 epochs, factor 0.1 |
 | Batch size | 16 |
 | Patch size | `256 x 256` |

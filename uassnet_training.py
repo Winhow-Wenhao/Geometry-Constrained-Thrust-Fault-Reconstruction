@@ -359,6 +359,14 @@ def combined_loss(
     }
 
 
+ENCODER_BLOCK_NAMES = ("enc1", "enc2", "enc3", "enc4", "enc5")
+
+
+def encoder_blocks(model: UASSNet) -> Tuple[nn.Module, ...]:
+    """Return the five encoder blocks of UASS-Net in order."""
+    return tuple(getattr(model, name) for name in ENCODER_BLOCK_NAMES)
+
+
 def run_epoch(
     model: nn.Module,
     loader: DataLoader,
@@ -366,9 +374,16 @@ def run_epoch(
     w_pos: float,
     w_neg: float,
     optimizer: Optional[optim.Optimizer] = None,
+    frozen_encoder: bool = False,
 ) -> Dict[str, float]:
     training = optimizer is not None
     model.train(training)
+    if training and frozen_encoder:
+        # A frozen encoder also keeps its BatchNorm running statistics fixed,
+        # so its blocks stay in evaluation mode while the rest of the model
+        # trains.
+        for module in encoder_blocks(model):
+            module.eval()
 
     totals = {"loss": 0.0, "wbce": 0.0, "dice": 0.0}
     n = 0
@@ -439,7 +454,12 @@ def load_model_weights(
 
 
 def freeze_encoder(model: UASSNet) -> None:
-    for module in [model.enc1, model.enc2, model.enc3, model.enc4, model.enc5]:
+    """Exclude the encoder parameters from optimization.
+
+    ``run_epoch(..., frozen_encoder=True)`` additionally keeps the encoder's
+    BatchNorm running statistics fixed during training.
+    """
+    for module in encoder_blocks(model):
         for p in module.parameters():
             p.requires_grad = False
 
@@ -487,7 +507,9 @@ def train(cfg: TrainConfig, checkpoint_name: str, pretrained: Optional[str] = No
     print(f"Trainable parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad):,}")
 
     for epoch in range(1, cfg.epochs + 1):
-        train_stats = run_epoch(model, train_loader, cfg, w_pos, w_neg, optimizer)
+        train_stats = run_epoch(
+            model, train_loader, cfg, w_pos, w_neg, optimizer, frozen_encoder=freeze
+        )
         val_stats = run_epoch(model, val_loader, cfg, w_pos, w_neg, optimizer=None)
 
         row = {
@@ -626,8 +648,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--freeze-encoder",
         action="store_true",
         help=(
-            "Freeze the pretrained encoder during transfer learning; valid only "
-            "with --mode transfer and --pretrained."
+            "Freeze the pretrained encoder during transfer learning (parameters "
+            "and BatchNorm running statistics); valid only with --mode transfer "
+            "and --pretrained."
         ),
     )
     parser.add_argument(

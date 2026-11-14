@@ -389,13 +389,17 @@ python uassnet_training.py \
   --mode transfer \
   --data-root outputs/datasets/real_labels \
   --out-dir outputs/training \
-  --pretrained outputs/training/uassnet_synthetic_best.pth
+  --pretrained outputs/training/uassnet_synthetic_best.pth \
+  --freeze-encoder
 ```
 
 The best transfer checkpoint is
 `outputs/training/uassnet_transfer_best.pth`. Transfer mode requires an
-explicit checkpoint through `--pretrained`. The optional `--freeze-encoder`
-flag is accepted only for transfer learning after that checkpoint is supplied.
+explicit checkpoint through `--pretrained`. `--freeze-encoder` freezes the
+parameters of the five encoder blocks and keeps their BatchNorm layers in
+evaluation mode, so the running statistics learned on synthetic data are
+preserved as described in the manuscript; the flag is accepted only for
+transfer learning after that checkpoint is supplied.
 
 ## 4. Run single-inline 2D inference and post-processing
 
