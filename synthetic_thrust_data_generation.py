@@ -27,7 +27,7 @@ Workflow
        a + b*c <= 1.73
 
 5. Apply continuous thrust-fault displacement:
-       u(x,z) = -d0/2 * exp(-F^2/(2 sigma^2)) * tanh(F/(2 lambda)) * t(x)
+       u(x,z) = d0/2 * exp(-F^2/(2 sigma^2)) * tanh(F/(2 lambda)) * t(x)
 
 6. Generate synthetic seismic sections using either:
        - 1D vertical Ricker-wavelet convolution, or
@@ -409,7 +409,10 @@ def displacement_field_for_fault(
     sigma = float(rng.uniform(cfg.sigma_min, cfg.sigma_max))
     lam = float(rng.uniform(cfg.lambda_min, cfg.lambda_max))
 
-    amplitude = -0.5 * d0 * np.exp(-(F**2) / (2.0 * sigma**2)) * np.tanh(F / (2.0 * lam))
+    # z increases downward; F < 0 is the hanging wall before horizontal flipping.
+    # Backward sampling uses (x - ux, z - uz), so thrust motion requires
+    # uz < 0 above the fault and uz > 0 below it for the positive slopes used here.
+    amplitude = 0.5 * d0 * np.exp(-(F**2) / (2.0 * sigma**2)) * np.tanh(F / (2.0 * lam))
     ux = amplitude * tx[None, :]
     uz = amplitude * tz[None, :]
 
