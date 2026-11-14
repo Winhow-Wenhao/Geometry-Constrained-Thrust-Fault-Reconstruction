@@ -61,14 +61,16 @@ fault_lines_2d_*.pkl
 fault_lines_2d_*.metadata.json
 fault_lines_2d_*.npz
 
-# Model checkpoints are local/external assets and are not distributed in this
-# source-code repository. See ASSET_LICENSES.md and MODEL_CARD.md.
+# Model checkpoints are kept outside Git history. The reference checkpoint
+# model_real.pth is distributed through the Zenodo data record; see
+# ASSET_LICENSES.md and MODEL_CARD.md.
 *.pth
 *.pt
 *.ckpt
 
 # Pickles are local/generated artifacts and unsafe to load from untrusted
-# sources. No pickle is distributed with this repository.
+# sources. No pickle is stored in this repository; the legacy demo pickle
+# outputs_400_500.pkl is distributed through the Zenodo data record.
 *.pkl
 
 # Keep demo notebooks, source code, README, and display PNGs, but exclude

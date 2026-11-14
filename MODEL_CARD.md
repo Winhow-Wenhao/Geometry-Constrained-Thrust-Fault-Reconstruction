@@ -1,16 +1,18 @@
 # Model card: UASS-Net thrust-fault segmentation reference checkpoint
 
-Model-card status: **Reference-only -- checkpoint identity verified; checkpoint
-not distributed; training and license metadata incomplete**  
-Last reviewed: 2026-08-26
+Model-card status: **Reference checkpoint published through Zenodo v1.1.0
+under CC BY-NC-SA 3.0 US; checkpoint identity verified; training manifest
+incomplete**  
+Last reviewed: 2026-09-07
 
-This card documents the external `model_real.pth` reference checkpoint. The
-checkpoint is not distributed with this source-code repository. Its
-architecture and recorded file identity were verified against the current code,
-but the raw state dictionary does not contain a complete training manifest,
-evaluation record, rightsholder statement, or model-weight license.
+This card documents the `model_real.pth` reference checkpoint. The checkpoint
+is not stored in this source-code repository; it is distributed through the
+versioned Zenodo data record ([Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723)).
+Its architecture and recorded file identity were verified against the current
+code, but the raw state dictionary does not contain a complete training
+manifest or evaluation record.
 
-Users must either lawfully obtain a compatible checkpoint or train their own
+Users can download the reference checkpoint from Zenodo or train their own
 with [`uassnet_training.py`](uassnet_training.py). The
 [`source notebook`](demo/fault_process_2d_end_to_end_github.ipynb) documents the
 2D workflow, while the
@@ -25,7 +27,7 @@ covered by the repository's MIT software license; see
 |---|---|
 | Model family | UASS-Net, a 2D binary semantic-segmentation network |
 | Task | Thrust-fault probability prediction from 2D seismic sections |
-| Availability | **External / not distributed** |
+| Availability | External to GitHub; distributed through [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723) |
 | Input tensor | One-channel `1 x 256 x 256` seismic patch per sample |
 | Spatial axis order | `(x, z)`; batched tensors use `(batch, channel, x, z)` |
 | Input preprocessing | Min-max normalization followed by per-patch z-score standardization |
@@ -38,10 +40,10 @@ covered by the repository's MIT software license; see
 | Checkpoint format | Raw PyTorch `state_dict`, 156 tensor entries |
 | Checkpoint size | 23,235,267 bytes |
 | SHA-256 | `d154ab68869cfc9c789b94835cb2614c182c7dd0fa3fd56cf2af4bb9b2b638aa` |
-| Model version | **Pending** |
-| Release date | **Not released** |
-| Weight rightsholder | **Pending** |
-| Weight license | **Pending; no redistribution or reuse license asserted** |
+| Model version | Zenodo data record version 1.1.0 |
+| Release date | 2026-09-07 |
+| Weight rightsholder | Wenhao Zheng, who trained the checkpoint; released with the manuscript co-authors as creators of the Zenodo record |
+| Weight license | CC BY-NC-SA 3.0 US, as a derivative of the NZ3D dataset; see the `LICENSE` file in the Zenodo record |
 
 The recorded reference checkpoint strictly loaded with `base_channels=16` and
 `dropout=0.2` into the shared definition in
@@ -71,8 +73,8 @@ processing, cross-inline linking, and 3D surface reconstruction.
 Suitable uses include:
 
 - inspecting the included precomputed notebook and PNG display assets;
-- running the workflow with a lawfully obtained compatible checkpoint and
-  appropriately licensed seismic data;
+- running the workflow with the reference checkpoint from Zenodo, or another
+  compatible checkpoint, and appropriately licensed seismic data;
 - training a new compatible checkpoint with the provided code; and
 - research comparison or method development after confirming all model-weight
   and data permissions described in
@@ -103,8 +105,8 @@ validation patches. The real-label builder defaults to `target_train=200` and
 `target_val=40`, but these values are upper limits applied independently after
 safe training and validation pools have been formed. They do not guarantee
 exact counts and do not permit moving a patch across the split boundary. These
-are current code defaults, not proof that the external reference checkpoint was
-trained from those exact files or splits.
+are current code defaults, not proof that the published reference checkpoint
+was trained from those exact files or splits.
 
 For newly constructed real datasets, the safe default assigns complete inlines
 to training or validation. Each line object in `configs/real_line_inputs.json`
@@ -127,12 +129,12 @@ identify:
 
 The source and license of the NZ3D seismic assets used by the reference workflow
 are recorded separately in [`ASSET_LICENSES.md`](ASSET_LICENSES.md). The two
-reference SEG-Y subsets are publicly archived in the versioned
-[Zenodo data record](https://doi.org/10.5281/zenodo.22070539). Wenhao Zheng has
-confirmed that he independently created the interpretation geometry and has not
-assigned or transferred those rights. The manual interpretation files and
-training patches nevertheless remain external and are not distributed in this
-release.
+reference SEG-Y subsets and the reference checkpoint are publicly archived in
+the versioned Zenodo data record ([Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723)).
+Wenhao Zheng has confirmed that he independently created the interpretation
+geometry and has not assigned or transferred those rights. The manual
+interpretation files and training patches nevertheless remain external and are
+not distributed in this release.
 
 ## Reference training protocol
 
@@ -159,7 +161,7 @@ The current `uassnet_training.py` defaults are:
 | Transfer checkpoint | `outputs/training/uassnet_transfer_best.pth` |
 
 Training-generated checkpoints include optimizer, scheduler, configuration,
-history, class weights, epoch, and best validation loss. The external
+history, class weights, epoch, and best validation loss. The published
 `model_real.pth` reference checkpoint is different: it is a raw state
 dictionary and does not carry those records.
 
@@ -218,19 +220,19 @@ or exact test manifest are distributed. The inline-600 assertions in the
 notebooks and inference code are implementation-regression checks for one
 external SEG-Y input; they are not general performance metrics.
 
-The committed 400--500 3D PNG demonstration starts from an external legacy,
-already-gridded surface pickle. It demonstrates visualization, not an
-end-to-end evaluation of the reference checkpoint through the current
-multi-inline and 3D reconstruction modules.
+The committed 400--500 3D PNG demonstration starts from the legacy,
+already-gridded surface pickle `outputs_400_500.pkl`. It demonstrates
+visualization, not an end-to-end evaluation of the reference checkpoint through
+the current multi-inline and 3D reconstruction modules.
 
-The complete reference figures cannot be reproduced from this repository alone.
-The applicable SEG-Y subsets are publicly available through
-[Zenodo v1.0.0](https://doi.org/10.5281/zenodo.22070539), but exact 2D
-regeneration also requires the undistributed reference checkpoint, and the 3D
-figures additionally require undistributed raw or numeric surface artifacts.
-The included executed notebook and PNG files are display records of the
-reference outputs; they do not make those remaining unpublished inputs available
-or establish permission to redistribute them.
+The reference figures can be regenerated from this repository together with
+the four files in [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723): the 2D notebook
+requires `inline600.segy` and `model_real.pth`, and the 3D viewer requires
+`400_500.segy` and `outputs_400_500.pkl`. The NPZ, CSV, and JSON products
+written by the viewer are regenerated locally and are not distributed. The
+included executed notebook and PNG files remain display records of the
+historical reference run rather than outputs of a fresh execution of this
+snapshot.
 
 ## Known limitations and risks
 
@@ -239,8 +241,8 @@ or establish permission to redistribute them.
 - Sigmoid outputs are not documented as calibrated probabilities.
 - Legacy synthetic datasets and checkpoints may encode the former `(z, x)`
   convention; regenerate the data and retrain before claiming unified-axis
-  reproducibility. The external reference checkpoint does not contain enough
-  training provenance to establish its historical array orientation.
+  reproducibility. The reference checkpoint does not contain enough training
+  provenance to establish its historical array orientation.
 - Transfer mode requires a pretrained checkpoint but does not automatically
   select the real-label dataset; `--pretrained` and the appropriate
   `--data-root` must both be passed explicitly.
@@ -253,8 +255,9 @@ or establish permission to redistribute them.
   `.gitignore`; mixing files from different runs would invalidate the generated
   manifests and split guarantees.
 - The final surfaces depend on non-neural 2D and 3D geometric thresholds.
-- Exact training provenance and model-weight permission remain incomplete; the
-  interpretation-geometry rightsholder has been confirmed separately.
+- Exact training provenance (sample manifest, source commit, hardware, and
+  validation history) remains incomplete; the checkpoint license and
+  rightsholder are recorded in [`ASSET_LICENSES.md`](ASSET_LICENSES.md).
 
 ## Basic use
 
@@ -265,8 +268,9 @@ checkpoint:
 python uassnet_training.py --mode sanity --device cpu
 ```
 
-To predict one `256 x 256` NumPy or float32 DAT seismic patch, first lawfully
-obtain a compatible checkpoint or train one with this repository, then run:
+To predict one `256 x 256` NumPy or float32 DAT seismic patch, first download
+the reference checkpoint from Zenodo or train one with this repository, then
+run:
 
 ```bash
 python uassnet_training.py \
@@ -288,13 +292,13 @@ editable single-inline workflow, and the
 shows its precomputed reference outputs. See [`README.md`](README.md) for the
 single-inline, multi-inline, and 3D workflow descriptions.
 
-## Conditional integrity check
+## Integrity check
 
-If you have legally obtained the exact external reference checkpoint, verify
-its identity from the repository root with:
+After downloading `model_real.pth` from Zenodo and placing it in the repository
+root, verify its identity with:
 
 ```bash
-sha256sum /path/to/model_real.pth
+sha256sum model_real.pth
 ```
 
 Expected SHA-256:
@@ -303,24 +307,24 @@ Expected SHA-256:
 d154ab68869cfc9c789b94835cb2614c182c7dd0fa3fd56cf2af4bb9b2b638aa
 ```
 
-The hash identifies the recorded reference file only. It neither grants access
-nor establishes a license. A newly trained compatible checkpoint will normally
-have a different hash.
+The hash identifies the recorded reference file only. A newly trained
+compatible checkpoint will normally have a different hash.
 
 ## License and redistribution
 
 The repository's MIT License applies to source code and software documentation;
-it does not grant access to or permission to redistribute `model_real.pth`.
-The reference checkpoint is external and not distributed. No redistribution or
-reuse permission for it should be inferred until the weight rightsholder,
-training-data terms, and an explicit model-weight license are confirmed. See
-[`ASSET_LICENSES.md`](ASSET_LICENSES.md) for the current asset inventory.
+it does not cover `model_real.pth`. The reference checkpoint is distributed
+through [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723) under CC BY-NC-SA 3.0 US as a
+derivative of the NZ3D dataset: reuse must credit the NZ3D source and the
+Zenodo record, remain non-commercial, identify changes, and use compatible
+ShareAlike terms. See [`ASSET_LICENSES.md`](ASSET_LICENSES.md) for the current
+asset inventory.
 
 ## Citation
 
 Use the manuscript citation in the [README citation section](README.md#citation).
-When using the reference SEG-Y subsets, also cite the versioned Zenodo dataset
-([doi:10.5281/zenodo.22070539](https://doi.org/10.5281/zenodo.22070539)) and the
-source NZ3D/MGDS dataset
+When using the reference checkpoint or SEG-Y subsets, also cite the versioned
+Zenodo dataset ([doi:10.5281/zenodo.22641723](https://doi.org/10.5281/zenodo.22641723)) and
+the source NZ3D/MGDS dataset
 ([doi:10.26022/IEDA/331022](https://doi.org/10.26022/IEDA/331022)), and follow
 the terms recorded in [`ASSET_LICENSES.md`](ASSET_LICENSES.md).

@@ -767,9 +767,9 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "--model-weights",
         default=str(script_dir / "model_real.pth"),
         help=(
-            "Path to a user-supplied compatible UASS-Net model state dictionary. "
-            "The default uses the historical reference filename at the repository "
-            "root, but that file is not distributed."
+            "Path to a compatible UASS-Net model state dictionary. The default is "
+            "the reference checkpoint filename at the repository root; that file is "
+            "available from the Zenodo data record (doi:10.5281/zenodo.22641723)."
         ),
     )
     parser.add_argument(

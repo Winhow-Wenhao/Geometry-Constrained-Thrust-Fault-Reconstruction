@@ -2,8 +2,9 @@
 
 This directory contains demonstration source code together with selected
 display-only PNG figures. Large inputs, model weights, pickles, NumPy data
-products, CSV tables, and run-metadata files are intentionally not distributed
-here.
+products, CSV tables, and run-metadata files are intentionally not stored here.
+The reference SEG-Y subsets, checkpoint, and legacy fault-surface pickle are
+distributed through [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723).
 
 ## 2D end-to-end notebooks
 
@@ -26,22 +27,17 @@ model_real.pth
 data/segy/inline600.segy
 ```
 
-The reference notebook verifies their SHA-256 checksums. The SEG-Y subset is
-available from the versioned
-[Zenodo data record](https://doi.org/10.5281/zenodo.22070539). The historical
-checkpoint is not distributed; exact re-execution requires a lawfully obtained
-checkpoint matching the recorded hash. A newly trained compatible model can be
-used for non-reference runs through the maintained workflow, but it will not
-reproduce the stored reference outputs. See the root `README.md`,
+Both files are available from [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723); the
+reference notebook verifies their SHA-256 checksums. A newly trained compatible
+model can be used for non-reference runs through the maintained workflow, but
+it will not reproduce the stored reference outputs. See the root `README.md`,
 `MODEL_CARD.md`, and `ASSET_LICENSES.md` for acquisition, provenance, and
 release-status information.
 
 During the shared-module refactor, the source cells of the clean and executed
 notebooks were synchronized and the nine embedded PNG payloads were retained
-byte-for-byte. The SEG-Y input is distributed separately through Zenodo, but the
-external checkpoint is not distributed. The stored outputs therefore remain a
-display record of the previously validated run rather than a newly executed run
-of this repository snapshot.
+byte-for-byte. The stored outputs are a display record of the previously
+validated run rather than a newly executed run of this repository snapshot.
 
 ## 3D visualization source
 
@@ -55,10 +51,10 @@ data/segy/400_500.segy
 demo/outputs_400_500.pkl
 ```
 
-Neither input is included in this demonstration directory. The
-`400_500.segy` seismic subset is available from
-[Zenodo v1.0.0](https://doi.org/10.5281/zenodo.22070539); the historical
-`outputs_400_500.pkl` remains undistributed. Never load an untrusted pickle. Run
+Neither input is stored in this demonstration directory; both are available
+from [Zenodo v1.1.0](https://doi.org/10.5281/zenodo.22641723). Never load an untrusted
+pickle: verify the SHA-256 of `outputs_400_500.pkl` against the root README
+before passing `--allow-legacy-pickle`. Run
 `python demo/visualize_fault_surfaces_3d.py --help` from the repository root for
 the supported formats and required coordinate options.
 
@@ -80,5 +76,6 @@ cells, and software documentation. Wenhao Zheng has confirmed that he
 independently created the included interpretation geometry and has not assigned
 or transferred those rights. The stored notebook outputs and PNG display assets
 are separately released under CC BY-NC-SA 3.0 US, subject to the NZ3D source
-attribution and modification notices in the root `ASSET_LICENSES.md`. Model
-weights remain external and are not covered by either repository license.
+attribution and modification notices in the root `ASSET_LICENSES.md`. The
+reference checkpoint and legacy pickle are distributed through Zenodo under
+CC BY-NC-SA 3.0 US and are not covered by the MIT License.
