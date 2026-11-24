@@ -26,8 +26,11 @@ Workflow
        c in [0.005, 0.02] pixel^-1
        a + b*c <= 1.73
 
-5. Apply continuous thrust-fault displacement:
-       u(x,z) = d0/2 * exp(-F^2/(2 sigma^2)) * tanh(F/(2 lambda)) * t(x)
+5. Apply thrust-fault displacement with a configurable tangential slip jump J:
+       u(x,z) = exp(-F^2/(2 sigma^2)) * (d0*T(F) + J*(S(F)-T(F))) * t(x)/2
+       T(F) = tanh(F/(2 lambda)).
+       S(F) = -1 for F < 0, and +1 for F >= 0.
+       J is in pixels. It defaults to d0/2, and J = 0 gives continuous displacement.
 
 6. Generate synthetic seismic sections using either:
        - 1D vertical Ricker-wavelet convolution, or
@@ -113,13 +116,15 @@ class SyntheticConfig:
     c_max: float = 0.02
     max_local_slope: float = 1.73
 
-    # Continuous thrust displacement field.
+    # Thrust displacement field.
     d0_min: float = 10.0
     d0_max: float = 90.0
     sigma_min: float = 10.0
     sigma_max: float = 50.0
     lambda_min: float = 1.0
     lambda_max: float = 5.0
+    # Relative tangential displacement across the fault trace, in pixels.
+    slip_jump: float | None = None
 
     # Label width around the modeled fault core.
     label_half_width_min: float = 1.5
@@ -167,6 +172,10 @@ class SyntheticConfig:
     probability_horizontal_flip: float = 0.5
 
     seed: int = 2026
+
+    def __post_init__(self) -> None:
+        if self.slip_jump is not None and not 0.0 <= self.slip_jump <= np.finfo(np.float32).max:
+            raise ValueError("slip_jump must be a finite, nonnegative number in pixels.")
 
 
 def normalize_section(x: np.ndarray, eps: float = 1e-8) -> np.ndarray:
@@ -386,7 +395,7 @@ def displacement_field_for_fault(
     rng: np.random.Generator,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict[str, float]]:
     """
-    Construct the continuous thrust-fault displacement field.
+    Construct a thrust-fault displacement field with a configurable slip jump.
 
     Returns:
         ux: horizontal displacement
@@ -412,7 +421,15 @@ def displacement_field_for_fault(
     # z increases downward; F < 0 is the hanging wall before horizontal flipping.
     # Backward sampling uses (x - ux, z - uz), so thrust motion requires
     # uz < 0 above the fault and uz > 0 below it for the positive slopes used here.
-    amplitude = 0.5 * d0 * np.exp(-(F**2) / (2.0 * sigma**2)) * np.tanh(F / (2.0 * lam))
+    # Assign F = 0 to the footwall.
+    side_sign = np.where(F < 0.0, -1.0, 1.0).astype(F.dtype)
+    smooth_transition = np.tanh(F / (2.0 * lam))
+    decay = np.exp(-(F**2) / (2.0 * sigma**2))
+    slip_jump = 0.5 * d0 if cfg.slip_jump is None else cfg.slip_jump
+    amplitude = (
+        0.5 * d0 * decay * smooth_transition
+        + 0.5 * slip_jump * decay * (side_sign - smooth_transition)
+    )
     ux = amplitude * tx[None, :]
     uz = amplitude * tz[None, :]
 
@@ -428,6 +445,7 @@ def displacement_field_for_fault(
         "d0": d0,
         "sigma": sigma,
         "lambda": lam,
+        "slip_jump": slip_jump,
         "label_half_width": label_half_width,
     })
     return ux.astype(np.float32), uz.astype(np.float32), label.astype(np.uint8), full_params
@@ -798,6 +816,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--min-faults", type=int, default=1)
     parser.add_argument("--max-faults", type=int, default=3)
+    parser.add_argument(
+        "--slip-jump",
+        type=float,
+        help="Relative tangential slip across each fault in pixels (default: d0/2, 0 for continuous displacement).",
+    )
     parser.add_argument("--seed", type=int, default=2026)
     parser.add_argument("--preview", type=int, default=0, help="Number of preview PNGs per split.")
 
@@ -837,6 +860,7 @@ def main() -> None:
         use_planar_background=not args.no_planar_background,
         use_gaussian_background=not args.no_gaussian_background,
         seed=args.seed,
+        slip_jump=args.slip_jump,
     )
 
     out_dir = Path(args.out)
